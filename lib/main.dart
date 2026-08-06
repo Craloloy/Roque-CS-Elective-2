@@ -8,6 +8,8 @@ void main() {
   runApp(const CallApp());
 }
 
+enum CallStatus { incoming, connected, ended }
+
 class CallApp extends StatelessWidget {
   const CallApp({super.key});
 
@@ -38,7 +40,7 @@ class _CallScreenState extends State<CallScreen>
   bool isBluetoothOn = false;
   bool isOnHold = false;
   bool isSpeakerOn = false;
-  bool callEnded = false;
+  CallStatus callStatus = CallStatus.incoming;
 
   late final AnimationController _pulseController;
   late final MemoryImage _nikiImage;
@@ -59,10 +61,43 @@ class _CallScreenState extends State<CallScreen>
     super.dispose();
   }
 
+  String get _statusText {
+    switch (callStatus) {
+      case CallStatus.incoming:
+        return 'Incoming Call';
+      case CallStatus.connected:
+        return 'Connected';
+      case CallStatus.ended:
+        return 'Call Ended';
+    }
+  }
+
+  void _handleMainCallButton() {
+    setState(() {
+      switch (callStatus) {
+        case CallStatus.incoming:
+          callStatus = CallStatus.connected;
+          _pulseController.stop();
+          break;
+        case CallStatus.connected:
+          callStatus = CallStatus.ended;
+          _pulseController.stop();
+          break;
+        case CallStatus.ended:
+          callStatus = CallStatus.incoming;
+          _pulseController.repeat(reverse: true);
+          break;
+      }
+    });
+  }
+
   void _openKeypad() {
+    if (callStatus == CallStatus.ended) return;
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const _KeypadSheet(),
     );
@@ -70,6 +105,9 @@ class _CallScreenState extends State<CallScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isConnected = callStatus == CallStatus.connected;
+    final isEnded = callStatus == CallStatus.ended;
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -97,7 +135,7 @@ class _CallScreenState extends State<CallScreen>
               child: Column(
                 children: [
                   Text(
-                    callEnded ? 'Call Ended' : 'Incoming Call',
+                    _statusText,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -169,12 +207,14 @@ class _CallScreenState extends State<CallScreen>
                         icon: isMuted ? Icons.mic_off_outlined : Icons.mic_none,
                         label: 'Mute',
                         active: isMuted,
+                        enabled: isConnected,
                         onTap: () => setState(() => isMuted = !isMuted),
                       ),
                       _CallOption(
                         icon: Icons.bluetooth,
                         label: 'Bluetooth',
                         active: isBluetoothOn,
+                        enabled: isConnected,
                         onTap: () =>
                             setState(() => isBluetoothOn = !isBluetoothOn),
                       ),
@@ -182,6 +222,7 @@ class _CallScreenState extends State<CallScreen>
                         icon: Icons.phone_paused_outlined,
                         label: 'Hold',
                         active: isOnHold,
+                        enabled: isConnected,
                         onTap: () => setState(() => isOnHold = !isOnHold),
                       ),
                     ],
@@ -192,25 +233,18 @@ class _CallScreenState extends State<CallScreen>
                     children: [
                       IconButton(
                         tooltip: 'Keypad',
-                        onPressed: _openKeypad,
+                        onPressed: isEnded ? null : _openKeypad,
                         icon: const Icon(Icons.dialpad, size: 26),
                       ),
                       GestureDetector(
-                        onTap: () {
-                          setState(() => callEnded = !callEnded);
-                          if (callEnded) {
-                            _pulseController.stop();
-                          } else {
-                            _pulseController.repeat(reverse: true);
-                          }
-                        },
+                        onTap: _handleMainCallButton,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
                           width: 70,
                           height: 70,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: callEnded
+                            color: isConnected
                                 ? const Color(0xFFE34B4B)
                                 : const Color(0xFF14C9DF),
                             boxShadow: const [
@@ -222,7 +256,7 @@ class _CallScreenState extends State<CallScreen>
                             ],
                           ),
                           child: Icon(
-                            callEnded ? Icons.call_end : Icons.call,
+                            isConnected ? Icons.call_end : Icons.call,
                             size: 34,
                             color: Colors.white,
                           ),
@@ -230,8 +264,11 @@ class _CallScreenState extends State<CallScreen>
                       ),
                       IconButton(
                         tooltip: 'Speaker',
-                        onPressed: () =>
-                            setState(() => isSpeakerOn = !isSpeakerOn),
+                        onPressed: isConnected
+                            ? () => setState(
+                                  () => isSpeakerOn = !isSpeakerOn,
+                                )
+                            : null,
                         icon: Icon(
                           isSpeakerOn
                               ? Icons.volume_up
@@ -257,10 +294,7 @@ class _CallScreenState extends State<CallScreen>
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
   }
 }
@@ -270,19 +304,23 @@ class _CallOption extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.active,
+    required this.enabled,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool active;
+  final bool enabled;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final inactiveColor = enabled ? Colors.black54 : Colors.black26;
+
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
         child: Column(
@@ -290,14 +328,14 @@ class _CallOption extends StatelessWidget {
             Icon(
               icon,
               size: 27,
-              color: active ? const Color(0xFF14AFC4) : Colors.black54,
+              color: active ? const Color(0xFF14AFC4) : inactiveColor,
             ),
             const SizedBox(height: 7),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: active ? const Color(0xFF14AFC4) : Colors.black54,
+                color: active ? const Color(0xFF14AFC4) : inactiveColor,
               ),
             ),
           ],
@@ -318,9 +356,7 @@ class _KeypadSheetState extends State<_KeypadSheet> {
   String enteredNumber = '';
 
   void _onKeyTap(String key) {
-    setState(() {
-      enteredNumber += key;
-    });
+    setState(() => enteredNumber += key);
   }
 
   void _deleteLastDigit() {
@@ -339,11 +375,16 @@ class _KeypadSheetState extends State<_KeypadSheet> {
       '*', '0', '#',
     ];
 
-    return SafeArea(
-      top: false,
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final sheetHeight = (screenHeight * 0.82).clamp(480.0, 680.0);
+
+    return Align(
+      alignment: Alignment.bottomCenter,
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.68,
-        padding: const EdgeInsets.fromLTRB(26, 14, 26, 24),
+        height: sheetHeight,
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 640),
+        padding: const EdgeInsets.fromLTRB(22, 14, 22, 18),
         decoration: const BoxDecoration(
           color: Color(0xFFF7F6FA),
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -358,14 +399,14 @@ class _KeypadSheetState extends State<_KeypadSheet> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             Row(
               children: [
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 18,
-                      vertical: 14,
+                      vertical: 12,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -373,6 +414,8 @@ class _KeypadSheetState extends State<_KeypadSheet> {
                     ),
                     child: Text(
                       enteredNumber.isEmpty ? 'Tap numbers here' : enteredNumber,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 20,
                         color: enteredNumber.isEmpty
@@ -383,43 +426,58 @@ class _KeypadSheetState extends State<_KeypadSheet> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 IconButton(
+                  tooltip: 'Delete',
                   onPressed: _deleteLastDigit,
                   icon: const Icon(Icons.backspace_outlined),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
             Expanded(
-              child: GridView.builder(
-                padding: EdgeInsets.zero,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: keys.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 18,
-                  childAspectRatio: 1.05,
-                ),
-                itemBuilder: (context, index) {
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(60),
-                    onTap: () => _onKeyTap(keys[index]),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFFEFEFF0),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        keys[index],
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final availableWidth = constraints.maxWidth;
+                  final availableHeight = constraints.maxHeight;
+                  final keyWidth = (availableWidth - 32) / 3;
+                  final keyHeight = (availableHeight - 30) / 4;
+                  final keySize = keyWidth < keyHeight ? keyWidth : keyHeight;
+
+                  return GridView.builder(
+                    padding: EdgeInsets.zero,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: keys.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 16,
+                      mainAxisExtent: keySize,
                     ),
+                    itemBuilder: (context, index) {
+                      return Center(
+                        child: SizedBox.square(
+                          dimension: keySize,
+                          child: Material(
+                            color: const Color(0xFFEFEFF0),
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: () => _onKeyTap(keys[index]),
+                              child: Center(
+                                child: Text(
+                                  keys[index],
+                                  style: const TextStyle(
+                                    fontSize: 27,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
