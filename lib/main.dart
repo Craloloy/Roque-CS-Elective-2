@@ -20,7 +20,7 @@ class CallApp extends StatelessWidget {
       title: 'Niki Call Screen',
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF4F4F4),
+        scaffoldBackgroundColor: Colors.white,
       ),
       home: const CallScreen(),
     );
@@ -109,64 +109,54 @@ class _CallScreenState extends State<CallScreen>
     final isEnded = callStatus == CallStatus.ended;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-            child: Container(
-              width: 360,
-              constraints: const BoxConstraints(minHeight: 690),
-              padding: const EdgeInsets.fromLTRB(30, 28, 30, 28),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(42),
-                border: Border.all(
-                  color: const Color(0xFF29283F),
-                  width: 11,
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    blurRadius: 18,
-                    offset: Offset(0, 8),
-                    color: Color(0x26000000),
-                  ),
-                ],
-              ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isShortScreen = constraints.maxHeight < 700;
+            final avatarArea = isShortScreen ? 170.0 : 210.0;
+            final outerRing = isShortScreen ? 160.0 : 190.0;
+            final middleRing = isShortScreen ? 132.0 : 156.0;
+            final innerRing = isShortScreen ? 106.0 : 124.0;
+            final photoSize = isShortScreen ? 78.0 : 92.0;
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(28, 24, 28, 22),
               child: Column(
                 children: [
                   Text(
                     _statusText,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 17,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  SizedBox(height: isShortScreen ? 18 : 28),
                   AnimatedBuilder(
                     animation: _pulseController,
                     builder: (context, child) {
                       final pulse = _pulseController.value;
                       return SizedBox(
-                        width: 200,
-                        height: 200,
+                        width: avatarArea,
+                        height: avatarArea,
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
                             _pulseCircle(
-                              188 + (pulse * 8),
+                              outerRing + (pulse * 8),
                               const Color(0x2038D9EA),
                             ),
                             _pulseCircle(
-                              156 + (pulse * 6),
+                              middleRing + (pulse * 6),
                               const Color(0x5035D9EA),
                             ),
                             _pulseCircle(
-                              124 + (pulse * 4),
+                              innerRing + (pulse * 4),
                               const Color(0xFF24C5DE),
                             ),
                             Container(
-                              width: 92,
-                              height: 92,
+                              width: photoSize,
+                              height: photoSize,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
@@ -184,11 +174,11 @@ class _CallScreenState extends State<CallScreen>
                       );
                     },
                   ),
-                  const SizedBox(height: 28),
+                  SizedBox(height: isShortScreen ? 18 : 26),
                   const Text(
                     'Niki',
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 24,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -197,11 +187,11 @@ class _CallScreenState extends State<CallScreen>
                     '+63 976 229 9449',
                     style: TextStyle(fontSize: 18),
                   ),
-                  const SizedBox(height: 44),
+                  const Spacer(),
                   const Divider(color: Color(0xFFE0E0E0)),
-                  const SizedBox(height: 25),
+                  SizedBox(height: isShortScreen ? 16 : 24),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _CallOption(
                         icon: isMuted ? Icons.mic_off_outlined : Icons.mic_none,
@@ -227,21 +217,21 @@ class _CallScreenState extends State<CallScreen>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 35),
+                  SizedBox(height: isShortScreen ? 22 : 34),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       IconButton(
                         tooltip: 'Keypad',
                         onPressed: isEnded ? null : _openKeypad,
-                        icon: const Icon(Icons.dialpad, size: 26),
+                        icon: const Icon(Icons.dialpad, size: 30),
                       ),
                       GestureDetector(
                         onTap: _handleMainCallButton,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
-                          width: 70,
-                          height: 70,
+                          width: 74,
+                          height: 74,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: isConnected
@@ -249,7 +239,7 @@ class _CallScreenState extends State<CallScreen>
                                 : const Color(0xFF14C9DF),
                             boxShadow: const [
                               BoxShadow(
-                                blurRadius: 10,
+                                blurRadius: 12,
                                 offset: Offset(0, 5),
                                 color: Color(0x26000000),
                               ),
@@ -257,7 +247,7 @@ class _CallScreenState extends State<CallScreen>
                           ),
                           child: Icon(
                             isConnected ? Icons.call_end : Icons.call,
-                            size: 34,
+                            size: 36,
                             color: Colors.white,
                           ),
                         ),
@@ -273,18 +263,19 @@ class _CallScreenState extends State<CallScreen>
                           isSpeakerOn
                               ? Icons.volume_up
                               : Icons.volume_down_outlined,
-                          size: 28,
+                          size: 30,
                           color: isSpeakerOn
                               ? const Color(0xFF14AFC4)
-                              : Colors.black87,
+                              : null,
                         ),
                       ),
                     ],
                   ),
+                  SizedBox(height: isShortScreen ? 8 : 18),
                 ],
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -322,12 +313,12 @@ class _CallOption extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       onTap: enabled ? onTap : null,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         child: Column(
           children: [
             Icon(
               icon,
-              size: 27,
+              size: 28,
               color: active ? const Color(0xFF14AFC4) : inactiveColor,
             ),
             const SizedBox(height: 7),
@@ -376,14 +367,13 @@ class _KeypadSheetState extends State<_KeypadSheet> {
     ];
 
     final screenHeight = MediaQuery.sizeOf(context).height;
-    final sheetHeight = (screenHeight * 0.82).clamp(480.0, 680.0);
+    final sheetHeight = (screenHeight * 0.78).clamp(480.0, 680.0);
 
     return Align(
       alignment: Alignment.bottomCenter,
       child: Container(
         height: sheetHeight,
         width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 640),
         padding: const EdgeInsets.fromLTRB(22, 14, 22, 18),
         decoration: const BoxDecoration(
           color: Color(0xFFF7F6FA),
@@ -438,10 +428,8 @@ class _KeypadSheetState extends State<_KeypadSheet> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final availableWidth = constraints.maxWidth;
-                  final availableHeight = constraints.maxHeight;
-                  final keyWidth = (availableWidth - 32) / 3;
-                  final keyHeight = (availableHeight - 30) / 4;
+                  final keyWidth = (constraints.maxWidth - 32) / 3;
+                  final keyHeight = (constraints.maxHeight - 30) / 4;
                   final keySize = keyWidth < keyHeight ? keyWidth : keyHeight;
 
                   return GridView.builder(
