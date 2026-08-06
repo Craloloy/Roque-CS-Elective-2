@@ -40,6 +40,8 @@ class _CallScreenState extends State<CallScreen>
   bool isBluetoothOn = false;
   bool isOnHold = false;
   bool isSpeakerOn = false;
+  bool showKeypad = false;
+  String enteredNumber = '';
   CallStatus callStatus = CallStatus.incoming;
 
   late final AnimationController _pulseController;
@@ -81,6 +83,8 @@ class _CallScreenState extends State<CallScreen>
           break;
         case CallStatus.connected:
           callStatus = CallStatus.ended;
+          showKeypad = false;
+          enteredNumber = '';
           _pulseController.stop();
           break;
         case CallStatus.ended:
@@ -91,16 +95,20 @@ class _CallScreenState extends State<CallScreen>
     });
   }
 
-  void _openKeypad() {
+  void _toggleKeypad() {
     if (callStatus == CallStatus.ended) return;
+    setState(() => showKeypad = !showKeypad);
+  }
 
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const _KeypadSheet(),
-    );
+  void _onKeyTap(String key) {
+    setState(() => enteredNumber += key);
+  }
+
+  void _deleteLastDigit() {
+    if (enteredNumber.isEmpty) return;
+    setState(() {
+      enteredNumber = enteredNumber.substring(0, enteredNumber.length - 1);
+    });
   }
 
   @override
@@ -113,165 +121,164 @@ class _CallScreenState extends State<CallScreen>
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isShortScreen = constraints.maxHeight < 700;
-            final avatarArea = isShortScreen ? 170.0 : 210.0;
-            final outerRing = isShortScreen ? 160.0 : 190.0;
-            final middleRing = isShortScreen ? 132.0 : 156.0;
-            final innerRing = isShortScreen ? 106.0 : 124.0;
-            final photoSize = isShortScreen ? 78.0 : 92.0;
+            final isShortScreen = constraints.maxHeight < 720;
+            final keypadVisible = showKeypad && !isEnded;
+            final avatarArea = keypadVisible
+                ? (isShortScreen ? 108.0 : 122.0)
+                : (isShortScreen ? 170.0 : 210.0);
+            final outerRing = keypadVisible
+                ? (isShortScreen ? 102.0 : 116.0)
+                : (isShortScreen ? 160.0 : 190.0);
+            final middleRing = keypadVisible
+                ? (isShortScreen ? 84.0 : 96.0)
+                : (isShortScreen ? 132.0 : 156.0);
+            final innerRing = keypadVisible
+                ? (isShortScreen ? 68.0 : 78.0)
+                : (isShortScreen ? 106.0 : 124.0);
+            final photoSize = keypadVisible
+                ? (isShortScreen ? 50.0 : 58.0)
+                : (isShortScreen ? 78.0 : 92.0);
 
             return Padding(
-              padding: const EdgeInsets.fromLTRB(28, 24, 28, 22),
+              padding: EdgeInsets.fromLTRB(
+                28,
+                keypadVisible ? 12 : 24,
+                28,
+                14,
+              ),
               child: Column(
                 children: [
-                  Text(
-                    _statusText,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: isShortScreen ? 18 : 28),
-                  AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      final pulse = _pulseController.value;
-                      return SizedBox(
-                        width: avatarArea,
-                        height: avatarArea,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            _pulseCircle(
-                              outerRing + (pulse * 8),
-                              const Color(0x2038D9EA),
-                            ),
-                            _pulseCircle(
-                              middleRing + (pulse * 6),
-                              const Color(0x5035D9EA),
-                            ),
-                            _pulseCircle(
-                              innerRing + (pulse * 4),
-                              const Color(0xFF24C5DE),
-                            ),
-                            Container(
-                              width: photoSize,
-                              height: photoSize,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 4,
-                                ),
-                                image: DecorationImage(
-                                  image: _nikiImage,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                  SizedBox(height: isShortScreen ? 18 : 26),
-                  const Text(
-                    'Niki',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '+63 976 229 9449',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  const Spacer(),
-                  const Divider(color: Color(0xFFE0E0E0)),
-                  SizedBox(height: isShortScreen ? 16 : 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _CallOption(
-                        icon: isMuted ? Icons.mic_off_outlined : Icons.mic_none,
-                        label: 'Mute',
-                        active: isMuted,
-                        enabled: isConnected,
-                        onTap: () => setState(() => isMuted = !isMuted),
-                      ),
-                      _CallOption(
-                        icon: Icons.bluetooth,
-                        label: 'Bluetooth',
-                        active: isBluetoothOn,
-                        enabled: isConnected,
-                        onTap: () =>
-                            setState(() => isBluetoothOn = !isBluetoothOn),
-                      ),
-                      _CallOption(
-                        icon: Icons.phone_paused_outlined,
-                        label: 'Hold',
-                        active: isOnHold,
-                        enabled: isConnected,
-                        onTap: () => setState(() => isOnHold = !isOnHold),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: isShortScreen ? 22 : 34),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      IconButton(
-                        tooltip: 'Keypad',
-                        onPressed: isEnded ? null : _openKeypad,
-                        icon: const Icon(Icons.dialpad, size: 30),
-                      ),
-                      GestureDetector(
-                        onTap: _handleMainCallButton,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          width: 74,
-                          height: 74,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isConnected
-                                ? const Color(0xFFE34B4B)
-                                : const Color(0xFF14C9DF),
-                            boxShadow: const [
-                              BoxShadow(
-                                blurRadius: 12,
-                                offset: Offset(0, 5),
-                                color: Color(0x26000000),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            isConnected ? Icons.call_end : Icons.call,
-                            size: 36,
-                            color: Colors.white,
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeInOut,
+                    child: Column(
+                      children: [
+                        Text(
+                          _statusText,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ),
-                      IconButton(
-                        tooltip: 'Speaker',
-                        onPressed: isConnected
-                            ? () => setState(
-                                  () => isSpeakerOn = !isSpeakerOn,
-                                )
-                            : null,
-                        icon: Icon(
-                          isSpeakerOn
-                              ? Icons.volume_up
-                              : Icons.volume_down_outlined,
-                          size: 30,
-                          color: isSpeakerOn
-                              ? const Color(0xFF14AFC4)
-                              : null,
+                        SizedBox(height: keypadVisible ? 8 : 22),
+                        AnimatedBuilder(
+                          animation: _pulseController,
+                          builder: (context, child) {
+                            final pulse = _pulseController.value;
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 260),
+                              width: avatarArea,
+                              height: avatarArea,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  _pulseCircle(
+                                    outerRing + (pulse * 8),
+                                    const Color(0x2038D9EA),
+                                  ),
+                                  _pulseCircle(
+                                    middleRing + (pulse * 6),
+                                    const Color(0x5035D9EA),
+                                  ),
+                                  _pulseCircle(
+                                    innerRing + (pulse * 4),
+                                    const Color(0xFF24C5DE),
+                                  ),
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 260),
+                                    width: photoSize,
+                                    height: photoSize,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 4,
+                                      ),
+                                      image: DecorationImage(
+                                        image: _nikiImage,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    ],
+                        SizedBox(height: keypadVisible ? 8 : 20),
+                        const Text(
+                          'Niki',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          keypadVisible && enteredNumber.isNotEmpty
+                              ? enteredNumber
+                              : '+63 976 229 9449',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: keypadVisible ? 22 : 18,
+                            fontWeight: keypadVisible && enteredNumber.isNotEmpty
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  SizedBox(height: isShortScreen ? 8 : 18),
+                  SizedBox(height: keypadVisible ? 12 : 0),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 260),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.08),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: keypadVisible
+                          ? _InlineKeypad(
+                              key: const ValueKey('keypad'),
+                              enteredNumber: enteredNumber,
+                              onKeyTap: _onKeyTap,
+                              onDelete: _deleteLastDigit,
+                              onClose: _toggleKeypad,
+                            )
+                          : _CallControls(
+                              key: const ValueKey('controls'),
+                              isConnected: isConnected,
+                              isEnded: isEnded,
+                              isMuted: isMuted,
+                              isBluetoothOn: isBluetoothOn,
+                              isOnHold: isOnHold,
+                              isSpeakerOn: isSpeakerOn,
+                              onMute: () =>
+                                  setState(() => isMuted = !isMuted),
+                              onBluetooth: () => setState(
+                                () => isBluetoothOn = !isBluetoothOn,
+                              ),
+                              onHold: () =>
+                                  setState(() => isOnHold = !isOnHold),
+                              onKeypad: _toggleKeypad,
+                              onCall: _handleMainCallButton,
+                              onSpeaker: () => setState(
+                                () => isSpeakerOn = !isSpeakerOn,
+                              ),
+                            ),
+                    ),
+                  ),
                 ],
               ),
             );
@@ -282,10 +289,216 @@ class _CallScreenState extends State<CallScreen>
   }
 
   Widget _pulseCircle(double size, Color color) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 260),
       width: size,
       height: size,
       decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+    );
+  }
+}
+
+class _CallControls extends StatelessWidget {
+  const _CallControls({
+    super.key,
+    required this.isConnected,
+    required this.isEnded,
+    required this.isMuted,
+    required this.isBluetoothOn,
+    required this.isOnHold,
+    required this.isSpeakerOn,
+    required this.onMute,
+    required this.onBluetooth,
+    required this.onHold,
+    required this.onKeypad,
+    required this.onCall,
+    required this.onSpeaker,
+  });
+
+  final bool isConnected;
+  final bool isEnded;
+  final bool isMuted;
+  final bool isBluetoothOn;
+  final bool isOnHold;
+  final bool isSpeakerOn;
+  final VoidCallback onMute;
+  final VoidCallback onBluetooth;
+  final VoidCallback onHold;
+  final VoidCallback onKeypad;
+  final VoidCallback onCall;
+  final VoidCallback onSpeaker;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Spacer(),
+        const Divider(color: Color(0xFFE0E0E0)),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _CallOption(
+              icon: isMuted ? Icons.mic_off_outlined : Icons.mic_none,
+              label: 'Mute',
+              active: isMuted,
+              enabled: isConnected,
+              onTap: onMute,
+            ),
+            _CallOption(
+              icon: Icons.bluetooth,
+              label: 'Bluetooth',
+              active: isBluetoothOn,
+              enabled: isConnected,
+              onTap: onBluetooth,
+            ),
+            _CallOption(
+              icon: Icons.phone_paused_outlined,
+              label: 'Hold',
+              active: isOnHold,
+              enabled: isConnected,
+              onTap: onHold,
+            ),
+          ],
+        ),
+        const SizedBox(height: 34),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              tooltip: 'Keypad',
+              onPressed: isEnded ? null : onKeypad,
+              icon: const Icon(Icons.dialpad, size: 30),
+            ),
+            GestureDetector(
+              onTap: onCall,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                width: 74,
+                height: 74,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isConnected
+                      ? const Color(0xFFE34B4B)
+                      : const Color(0xFF14C9DF),
+                  boxShadow: const [
+                    BoxShadow(
+                      blurRadius: 12,
+                      offset: Offset(0, 5),
+                      color: Color(0x26000000),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  isConnected ? Icons.call_end : Icons.call,
+                  size: 36,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Speaker',
+              onPressed: isConnected ? onSpeaker : null,
+              icon: Icon(
+                isSpeakerOn ? Icons.volume_up : Icons.volume_down_outlined,
+                size: 30,
+                color: isSpeakerOn ? const Color(0xFF14AFC4) : null,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+      ],
+    );
+  }
+}
+
+class _InlineKeypad extends StatelessWidget {
+  const _InlineKeypad({
+    super.key,
+    required this.enteredNumber,
+    required this.onKeyTap,
+    required this.onDelete,
+    required this.onClose,
+  });
+
+  final String enteredNumber;
+  final ValueChanged<String> onKeyTap;
+  final VoidCallback onDelete;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    const keys = [
+      '1', '2', '3',
+      '4', '5', '6',
+      '7', '8', '9',
+      '*', '0', '#',
+    ];
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            IconButton(
+              tooltip: 'Delete',
+              onPressed: enteredNumber.isEmpty ? null : onDelete,
+              icon: const Icon(Icons.backspace_outlined),
+            ),
+            IconButton(
+              tooltip: 'Close keypad',
+              onPressed: onClose,
+              icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 30),
+            ),
+          ],
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final keyWidth = (constraints.maxWidth - 28) / 3;
+              final keyHeight = (constraints.maxHeight - 24) / 4;
+              final keySize = keyWidth < keyHeight ? keyWidth : keyHeight;
+
+              return GridView.builder(
+                padding: EdgeInsets.zero,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: keys.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 8,
+                  mainAxisExtent: keySize,
+                ),
+                itemBuilder: (context, index) {
+                  return Center(
+                    child: SizedBox.square(
+                      dimension: keySize,
+                      child: Material(
+                        color: const Color(0xFFF0F0F2),
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () => onKeyTap(keys[index]),
+                          child: Center(
+                            child: Text(
+                              keys[index],
+                              style: const TextStyle(
+                                fontSize: 27,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -327,147 +540,6 @@ class _CallOption extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 color: active ? const Color(0xFF14AFC4) : inactiveColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _KeypadSheet extends StatefulWidget {
-  const _KeypadSheet();
-
-  @override
-  State<_KeypadSheet> createState() => _KeypadSheetState();
-}
-
-class _KeypadSheetState extends State<_KeypadSheet> {
-  String enteredNumber = '';
-
-  void _onKeyTap(String key) {
-    setState(() => enteredNumber += key);
-  }
-
-  void _deleteLastDigit() {
-    if (enteredNumber.isEmpty) return;
-    setState(() {
-      enteredNumber = enteredNumber.substring(0, enteredNumber.length - 1);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const keys = [
-      '1', '2', '3',
-      '4', '5', '6',
-      '7', '8', '9',
-      '*', '0', '#',
-    ];
-
-    final screenHeight = MediaQuery.sizeOf(context).height;
-    final sheetHeight = (screenHeight * 0.78).clamp(480.0, 680.0);
-
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        height: sheetHeight,
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(22, 14, 22, 18),
-        decoration: const BoxDecoration(
-          color: Color(0xFFF7F6FA),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 42,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.black45,
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Text(
-                      enteredNumber.isEmpty ? 'Tap numbers here' : enteredNumber,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: enteredNumber.isEmpty
-                            ? Colors.black45
-                            : Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Delete',
-                  onPressed: _deleteLastDigit,
-                  icon: const Icon(Icons.backspace_outlined),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final keyWidth = (constraints.maxWidth - 32) / 3;
-                  final keyHeight = (constraints.maxHeight - 30) / 4;
-                  final keySize = keyWidth < keyHeight ? keyWidth : keyHeight;
-
-                  return GridView.builder(
-                    padding: EdgeInsets.zero,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: keys.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 16,
-                      mainAxisExtent: keySize,
-                    ),
-                    itemBuilder: (context, index) {
-                      return Center(
-                        child: SizedBox.square(
-                          dimension: keySize,
-                          child: Material(
-                            color: const Color(0xFFEFEFF0),
-                            shape: const CircleBorder(),
-                            child: InkWell(
-                              customBorder: const CircleBorder(),
-                              onTap: () => _onKeyTap(keys[index]),
-                              child: Center(
-                                child: Text(
-                                  keys[index],
-                                  style: const TextStyle(
-                                    fontSize: 27,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
               ),
             ),
           ],
