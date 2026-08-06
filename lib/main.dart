@@ -11,11 +11,10 @@ class CallApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Dialing Screen',
+      title: 'Niki Call Screen',
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF4F4F4),
-        fontFamily: 'Arial',
       ),
       home: const CallScreen(),
     );
@@ -54,10 +53,11 @@ class _CallScreenState extends State<CallScreen>
     super.dispose();
   }
 
-  void _toggleKeypad() {
+  void _openKeypad() {
     showModalBottomSheet<void>(
       context: context,
-      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => const _KeypadSheet(),
     );
   }
@@ -91,61 +91,47 @@ class _CallScreenState extends State<CallScreen>
               child: Column(
                 children: [
                   Text(
-                    callEnded ? 'Call Ended' : 'Dialing',
+                    callEnded ? 'Call Ended' : 'Incoming Call',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 28),
                   AnimatedBuilder(
                     animation: _pulseController,
                     builder: (context, child) {
                       final pulse = _pulseController.value;
                       return SizedBox(
-                        width: 190,
-                        height: 190,
+                        width: 200,
+                        height: 200,
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
                             _pulseCircle(
-                              180 + (pulse * 8),
+                              188 + (pulse * 8),
                               const Color(0x2038D9EA),
                             ),
                             _pulseCircle(
-                              148 + (pulse * 6),
+                              156 + (pulse * 6),
                               const Color(0x5035D9EA),
                             ),
                             _pulseCircle(
-                              118 + (pulse * 4),
+                              124 + (pulse * 4),
                               const Color(0xFF24C5DE),
                             ),
                             Container(
-                              width: 86,
-                              height: 86,
+                              width: 92,
+                              height: 92,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: Colors.white,
                                   width: 4,
                                 ),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Color(0xFF72DDEA),
-                                    Color(0xFF116E83),
-                                  ],
-                                ),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  'PL',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 27,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                image: const DecorationImage(
+                                  image: AssetImage('assets/niki.jpg'),
+                                  fit: BoxFit.cover,
                                 ),
                               ),
                             ),
@@ -154,17 +140,17 @@ class _CallScreenState extends State<CallScreen>
                       );
                     },
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 28),
                   const Text(
-                    'Pearl Luna',
+                    'Niki',
                     style: TextStyle(
-                      fontSize: 21,
+                      fontSize: 22,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    '+ 476-229-9449',
+                    '+63 976 229 9449',
                     style: TextStyle(fontSize: 18),
                   ),
                   const SizedBox(height: 44),
@@ -200,7 +186,7 @@ class _CallScreenState extends State<CallScreen>
                     children: [
                       IconButton(
                         tooltip: 'Keypad',
-                        onPressed: _toggleKeypad,
+                        onPressed: _openKeypad,
                         icon: const Icon(Icons.dialpad, size: 26),
                       ),
                       GestureDetector(
@@ -265,7 +251,10 @@ class _CallScreenState extends State<CallScreen>
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+      ),
     );
   }
 }
@@ -312,8 +301,28 @@ class _CallOption extends StatelessWidget {
   }
 }
 
-class _KeypadSheet extends StatelessWidget {
+class _KeypadSheet extends StatefulWidget {
   const _KeypadSheet();
+
+  @override
+  State<_KeypadSheet> createState() => _KeypadSheetState();
+}
+
+class _KeypadSheetState extends State<_KeypadSheet> {
+  String enteredNumber = '';
+
+  void _onKeyTap(String key) {
+    setState(() {
+      enteredNumber += key;
+    });
+  }
+
+  void _deleteLastDigit() {
+    if (enteredNumber.isEmpty) return;
+    setState(() {
+      enteredNumber = enteredNumber.substring(0, enteredNumber.length - 1);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -325,37 +334,91 @@ class _KeypadSheet extends StatelessWidget {
     ];
 
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(34, 8, 34, 30),
-        child: GridView.builder(
-          shrinkWrap: true,
-          itemCount: keys.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 18,
-            childAspectRatio: 1.35,
-          ),
-          itemBuilder: (context, index) {
-            return InkWell(
-              borderRadius: BorderRadius.circular(40),
-              onTap: () {},
-              child: Container(
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFF0F0F0),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  keys[index],
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w500,
+      top: false,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.68,
+        padding: const EdgeInsets.fromLTRB(26, 14, 26, 24),
+        decoration: const BoxDecoration(
+          color: Color(0xFFF7F6FA),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black45,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Text(
+                      enteredNumber.isEmpty ? 'Tap numbers here' : enteredNumber,
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: enteredNumber.isEmpty
+                            ? Colors.black45
+                            : Colors.black87,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
+                const SizedBox(width: 10),
+                IconButton(
+                  onPressed: _deleteLastDigit,
+                  icon: const Icon(Icons.backspace_outlined),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: GridView.builder(
+                padding: EdgeInsets.zero,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: keys.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 18,
+                  childAspectRatio: 1.05,
+                ),
+                itemBuilder: (context, index) {
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(60),
+                    onTap: () => _onKeyTap(keys[index]),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFFEFEFF0),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        keys[index],
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
     );
