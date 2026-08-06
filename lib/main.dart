@@ -1,121 +1,362 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const CallApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class CallApp extends StatelessWidget {
+  const CallApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'Dialing Screen',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF4F4F4),
+        fontFamily: 'Arial',
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const CallScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class CallScreen extends StatefulWidget {
+  const CallScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<CallScreen> createState() => _CallScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _CallScreenState extends State<CallScreen>
+    with SingleTickerProviderStateMixin {
+  bool isMuted = false;
+  bool isBluetoothOn = false;
+  bool isOnHold = false;
+  bool isSpeakerOn = false;
+  bool callEnded = false;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  late final AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  void _toggleKeypad() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => const _KeypadSheet(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+            child: Container(
+              width: 360,
+              constraints: const BoxConstraints(minHeight: 690),
+              padding: const EdgeInsets.fromLTRB(30, 28, 30, 28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(42),
+                border: Border.all(
+                  color: const Color(0xFF29283F),
+                  width: 11,
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    blurRadius: 18,
+                    offset: Offset(0, 8),
+                    color: Color(0x26000000),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    callEnded ? 'Call Ended' : 'Dialing',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (context, child) {
+                      final pulse = _pulseController.value;
+                      return SizedBox(
+                        width: 190,
+                        height: 190,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            _pulseCircle(
+                              180 + (pulse * 8),
+                              const Color(0x2038D9EA),
+                            ),
+                            _pulseCircle(
+                              148 + (pulse * 6),
+                              const Color(0x5035D9EA),
+                            ),
+                            _pulseCircle(
+                              118 + (pulse * 4),
+                              const Color(0xFF24C5DE),
+                            ),
+                            Container(
+                              width: 86,
+                              height: 86,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 4,
+                                ),
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFF72DDEA),
+                                    Color(0xFF116E83),
+                                  ],
+                                ),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'PL',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 27,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 30),
+                  const Text(
+                    'Pearl Luna',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '+ 476-229-9449',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                  const SizedBox(height: 44),
+                  const Divider(color: Color(0xFFE0E0E0)),
+                  const SizedBox(height: 25),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _CallOption(
+                        icon: isMuted ? Icons.mic_off_outlined : Icons.mic_none,
+                        label: 'Mute',
+                        active: isMuted,
+                        onTap: () => setState(() => isMuted = !isMuted),
+                      ),
+                      _CallOption(
+                        icon: Icons.bluetooth,
+                        label: 'Bluetooth',
+                        active: isBluetoothOn,
+                        onTap: () =>
+                            setState(() => isBluetoothOn = !isBluetoothOn),
+                      ),
+                      _CallOption(
+                        icon: Icons.phone_paused_outlined,
+                        label: 'Hold',
+                        active: isOnHold,
+                        onTap: () => setState(() => isOnHold = !isOnHold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 35),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        tooltip: 'Keypad',
+                        onPressed: _toggleKeypad,
+                        icon: const Icon(Icons.dialpad, size: 26),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => callEnded = !callEnded);
+                          if (callEnded) {
+                            _pulseController.stop();
+                          } else {
+                            _pulseController.repeat(reverse: true);
+                          }
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          width: 70,
+                          height: 70,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: callEnded
+                                ? const Color(0xFFE34B4B)
+                                : const Color(0xFF14C9DF),
+                            boxShadow: const [
+                              BoxShadow(
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                                color: Color(0x26000000),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            callEnded ? Icons.call_end : Icons.call,
+                            size: 34,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Speaker',
+                        onPressed: () =>
+                            setState(() => isSpeakerOn = !isSpeakerOn),
+                        icon: Icon(
+                          isSpeakerOn
+                              ? Icons.volume_up
+                              : Icons.volume_down_outlined,
+                          size: 28,
+                          color: isSpeakerOn
+                              ? const Color(0xFF14AFC4)
+                              : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+    );
+  }
+
+  Widget _pulseCircle(double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+    );
+  }
+}
+
+class _CallOption extends StatelessWidget {
+  const _CallOption({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
           children: [
-            const Text('You have pushed the button this many times:'),
+            Icon(
+              icon,
+              size: 27,
+              color: active ? const Color(0xFF14AFC4) : Colors.black54,
+            ),
+            const SizedBox(height: 7),
             Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: active ? const Color(0xFF14AFC4) : Colors.black54,
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+    );
+  }
+}
+
+class _KeypadSheet extends StatelessWidget {
+  const _KeypadSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    const keys = [
+      '1', '2', '3',
+      '4', '5', '6',
+      '7', '8', '9',
+      '*', '0', '#',
+    ];
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(34, 8, 34, 30),
+        child: GridView.builder(
+          shrinkWrap: true,
+          itemCount: keys.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 18,
+            childAspectRatio: 1.35,
+          ),
+          itemBuilder: (context, index) {
+            return InkWell(
+              borderRadius: BorderRadius.circular(40),
+              onTap: () {},
+              child: Container(
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFF0F0F0),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  keys[index],
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
