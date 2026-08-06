@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
+import 'niki_image.dart';
 
 void main() {
   runApp(const CallApp());
@@ -37,6 +41,7 @@ class _CallScreenState extends State<CallScreen>
   bool callEnded = false;
 
   late final AnimationController _pulseController;
+  late final MemoryImage _nikiImage;
 
   @override
   void initState() {
@@ -45,6 +50,7 @@ class _CallScreenState extends State<CallScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
+    _nikiImage = MemoryImage(base64Decode(nikiImageBase64));
   }
 
   @override
@@ -129,8 +135,8 @@ class _CallScreenState extends State<CallScreen>
                                   color: Colors.white,
                                   width: 4,
                                 ),
-                                image: const DecorationImage(
-                                  image: AssetImage('assets/niki.jpg'),
+                                image: DecorationImage(
+                                  image: _nikiImage,
                                   fit: BoxFit.cover,
                                 ),
                               ),
