@@ -1,74 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-void main() => runApp(const FreshCartApp());
+void main() => runApp(const FruitShopApp());
 
 class Fruit {
   const Fruit({
     required this.name,
     required this.emoji,
-    required this.description,
     required this.price,
-    required this.category,
-    required this.imageUrl,
+    required this.description,
+    this.rating = 4.8,
+    this.reviews = 100,
   });
 
   final String name;
   final String emoji;
-  final String description;
   final double price;
-  final String category;
-  final String imageUrl;
+  final String description;
+  final double rating;
+  final int reviews;
 }
 
 const fruits = <String, Fruit>{
   'apple': Fruit(
-    name: 'Honeycrisp Apple',
+    name: 'Fresh Apple',
     emoji: '🍎',
-    description: 'Crisp, juicy, and naturally sweet.',
-    price: 89,
-    category: 'Fruits',
-    imageUrl: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=900&q=85',
+    price: 120,
+    description: 'Crisp, sweet, and freshly picked.',
+    rating: 4.9,
+    reviews: 128,
   ),
   'banana': Fruit(
     name: 'Premium Banana',
     emoji: '🍌',
-    description: 'Creamy, sweet, and ready to enjoy.',
-    price: 69,
-    category: 'Fruits',
-    imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=900&q=85',
+    price: 85,
+    description: 'Naturally sweet and creamy.',
+    rating: 4.8,
+    reviews: 96,
   ),
   'orange': Fruit(
-    name: 'Valencia Orange',
+    name: 'Juicy Orange',
     emoji: '🍊',
-    description: 'Bright, juicy, and bursting with citrus.',
-    price: 99,
-    category: 'Citrus',
-    imageUrl: 'https://images.unsplash.com/photo-1547514701-42782101795e?w=900&q=85',
+    price: 100,
+    description: 'Bright, juicy, and full of flavor.',
+    rating: 4.7,
+    reviews: 84,
   ),
   'strawberry': Fruit(
-    name: 'Fresh Strawberries',
+    name: 'Fresh Strawberry',
     emoji: '🍓',
-    description: 'Sweet, fragrant, and picked at peak ripeness.',
-    price: 149,
-    category: 'Berries',
-    imageUrl: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=900&q=85',
+    price: 180,
+    description: 'Sweet, colorful, and delicious.',
+    rating: 4.9,
+    reviews: 142,
   ),
   'watermelon': Fruit(
-    name: 'Seedless Watermelon',
+    name: 'Sweet Watermelon',
     emoji: '🍉',
-    description: 'Cool, refreshing, and perfect for sharing.',
-    price: 199,
-    category: 'Fruits',
-    imageUrl: 'https://images.unsplash.com/photo-1563114773-84221bd62daa?w=900&q=85',
+    price: 75,
+    description: 'Cool, juicy, and refreshing.',
+    rating: 4.8,
+    reviews: 73,
   ),
   'grapes': Fruit(
-    name: 'Sweet Green Grapes',
+    name: 'Seedless Grapes',
     emoji: '🍇',
-    description: 'Crunchy, juicy, and naturally sweet.',
-    price: 129,
-    category: 'Berries',
-    imageUrl: 'https://images.unsplash.com/photo-1537640538966-79f369143f8f?w=900&q=85',
+    price: 150,
+    description: 'Small, juicy, and naturally sweet.',
+    rating: 4.8,
+    reviews: 91,
   ),
 };
 
@@ -92,22 +92,32 @@ final router = GoRouter(
   ],
 );
 
-class FreshCartApp extends StatelessWidget {
-  const FreshCartApp({super.key});
+class FruitShopApp extends StatelessWidget {
+  const FruitShopApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'FreshCart',
+      title: 'Freshly',
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF7F8F4),
+        scaffoldBackgroundColor: const Color(0xFFF8F9F5),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF176B45),
+          seedColor: const Color(0xFF315C35),
           brightness: Brightness.light,
         ),
-        fontFamily: 'Roboto',
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFF8F9F5),
+          elevation: 0,
+        ),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(18)),
+          ),
+        ),
       ),
       routerConfig: router,
     );
@@ -122,8 +132,8 @@ class ShopHomePage extends StatefulWidget {
 }
 
 class _ShopHomePageState extends State<ShopHomePage> {
-  final searchController = TextEditingController();
   String selectedCategory = 'All';
+  final searchController = TextEditingController();
 
   @override
   void dispose() {
@@ -131,197 +141,217 @@ class _ShopHomePageState extends State<ShopHomePage> {
     super.dispose();
   }
 
-  List<MapEntry<String, Fruit>> get visibleFruits {
-    final query = searchController.text.trim().toLowerCase();
-    return fruits.entries.where((entry) {
-      final matchesSearch = query.isEmpty ||
-          entry.value.name.toLowerCase().contains(query) ||
-          entry.value.category.toLowerCase().contains(query);
-      final matchesCategory = selectedCategory == 'All' ||
-          entry.value.category == selectedCategory;
-      return matchesSearch && matchesCategory;
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final search = searchController.text.toLowerCase();
+    final visibleFruits = fruits.entries.where((entry) {
+      return entry.value.name.toLowerCase().contains(search);
+    }).toList();
+
     return Scaffold(
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 0,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Shop'),
-          NavigationDestination(icon: Icon(Icons.favorite_border), label: 'Wishlist'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Orders'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
-        ],
-      ),
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeader()),
-            SliverToBoxAdapter(child: _buildHero()),
-            SliverToBoxAdapter(child: _buildCategories()),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(18, 4, 18, 30),
-              sliver: SliverToBoxAdapter(
-                child: Row(
-                  children: [
-                    const Text('Popular picks', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                    const Spacer(),
-                    Text('${visibleFruits.length} items', style: const TextStyle(color: Colors.black54)),
-                  ],
-                ),
+      appBar: AppBar(
+        titleSpacing: 20,
+        title: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0xFFDDEBD8),
+                borderRadius: BorderRadius.circular(12),
               ),
+              alignment: Alignment.center,
+              child: const Text('🍃', style: TextStyle(fontSize: 21)),
             ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 40),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: .70,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (_, index) {
-                    final entry = visibleFruits[index];
-                    return FruitCard(slug: entry.key, fruit: entry.value);
-                  },
-                  childCount: visibleFruits.length,
-                ),
-              ),
+            const SizedBox(width: 10),
+            const Text(
+              'freshly',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 23),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF176B45),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.eco_rounded, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('FreshCart', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-                  Text('Freshness delivered', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                ],
-              ),
-              const Spacer(),
-              Badge(
-                label: const Text('2'),
-                child: IconButton.filledTonal(
-                  onPressed: () {},
-                  icon: const Icon(Icons.shopping_bag_outlined),
-                ),
-              ),
-            ],
+        actions: [
+          IconButton(
+            onPressed: () {},
+            tooltip: 'Shopping cart',
+            icon: Badge(
+              label: const Text('2'),
+              child: const Icon(Icons.shopping_bag_outlined),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(width: 10),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+        children: [
+          const Text(
+            'Good food starts\nwith fresh fruit.',
+            style: TextStyle(
+              fontSize: 29,
+              height: 1.08,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.7,
+            ),
+          ),
+          const SizedBox(height: 7),
+          const Text(
+            'Picked fresh. Delivered simply.',
+            style: TextStyle(color: Colors.black54, fontSize: 14),
+          ),
+          const SizedBox(height: 18),
           TextField(
             controller: searchController,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              hintText: 'Search fruits, berries, citrus...',
+              hintText: 'Search fruits...',
               prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: searchController.text.isEmpty
-                  ? null
-                  : IconButton(
+              suffixIcon: searchController.text.isNotEmpty
+                  ? IconButton(
                       onPressed: () {
                         searchController.clear();
                         setState(() {});
                       },
                       icon: const Icon(Icons.close_rounded),
-                    ),
+                    )
+                  : null,
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(15),
                 borderSide: BorderSide.none,
               ),
             ),
           ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(17),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDDEBD8),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'FRESH PICK',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                          color: Color(0xFF315C35),
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        'Freshness you\ncan taste.',
+                        style: TextStyle(
+                          fontSize: 21,
+                          height: 1.05,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Text('🍎', style: TextStyle(fontSize: 62)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          const Text(
+            'Categories',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 39,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: ['All', 'Popular', 'Best sellers'].map((category) {
+                final selected = selectedCategory == category;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(category),
+                    selected: selected,
+                    onSelected: (_) => setState(() {
+                      selectedCategory = category;
+                    }),
+                    labelStyle: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: selected ? Colors.white : Colors.black87,
+                    ),
+                    selectedColor: const Color(0xFF315C35),
+                    backgroundColor: Colors.white,
+                    side: BorderSide.none,
+                    showCheckmark: false,
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Fresh fruits',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+              ),
+              Text(
+                '${visibleFruits.length} items',
+                style: const TextStyle(color: Colors.black45, fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (visibleFruits.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(30),
+              child: Center(child: Text('No fruits found.')),
+            )
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: visibleFruits.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: .82,
+              ),
+              itemBuilder: (context, index) {
+                final entry = visibleFruits[index];
+                return FruitCard(slug: entry.key, fruit: entry.value);
+              },
+            ),
         ],
       ),
-    );
-  }
-
-  Widget _buildHero() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
-      child: Container(
-        height: 180,
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF176B45), Color(0xFF2C9B62)],
+      bottomNavigationBar: NavigationBar(
+        height: 66,
+        selectedIndex: 0,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.storefront_outlined),
+            selectedIcon: Icon(Icons.storefront),
+            label: 'Shop',
           ),
-          boxShadow: const [BoxShadow(color: Color(0x22176B45), blurRadius: 20, offset: Offset(0, 10))],
-        ),
-        child: Row(
-          children: [
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Farm fresh.', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
-                  Text('Delivered happy.', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
-                  SizedBox(height: 8),
-                  Text('Get 20% off your first order', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                ],
-              ),
-            ),
-            const Text('🍓', style: TextStyle(fontSize: 68)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategories() {
-    const categories = ['All', 'Fruits', 'Citrus', 'Berries'];
-    return SizedBox(
-      height: 58,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 9),
-        itemBuilder: (_, index) {
-          final category = categories[index];
-          final selected = category == selectedCategory;
-          return ChoiceChip(
-            label: Text(category),
-            selected: selected,
-            onSelected: (_) => setState(() => selectedCategory = category),
-            labelStyle: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : Colors.black87,
-            ),
-            selectedColor: const Color(0xFF176B45),
-            backgroundColor: Colors.white,
-            side: BorderSide.none,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          );
-        },
+          NavigationDestination(
+            icon: Icon(Icons.favorite_border),
+            selectedIcon: Icon(Icons.favorite),
+            label: 'Favorites',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
       ),
     );
   }
@@ -335,84 +365,81 @@ class FruitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(24),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.go('/fruit/$slug'),
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => context.go('/fruit/$slug'),
+      child: Card(
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5ED),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'FRESH',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF315C35),
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.favorite_border,
+                    size: 19,
+                    color: Colors.black38,
+                  ),
+                ],
+              ),
               Expanded(
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: Image.network(
-                          fruit.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: const Color(0xFFEAF2E9),
-                            alignment: Alignment.center,
-                            child: Text(fruit.emoji, style: const TextStyle(fontSize: 70)),
-                          ),
-                          loadingBuilder: (_, child, progress) => progress == null
-                              ? child
-                              : Container(
-                                  color: const Color(0xFFEAF2E9),
-                                  alignment: Alignment.center,
-                                  child: Text(fruit.emoji, style: const TextStyle(fontSize: 64)),
-                                ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.white.withOpacity(.92),
-                        child: const Icon(Icons.favorite_border, size: 19),
-                      ),
-                    ),
-                    Positioned(
-                      left: 8,
-                      bottom: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(.92),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(fruit.category, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-                      ),
-                    ),
-                  ],
+                child: Center(
+                  child: Text(fruit.emoji, style: const TextStyle(fontSize: 67)),
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(fruit.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-              const SizedBox(height: 4),
-              Text('₱${fruit.price.toStringAsFixed(0)} / pack', style: const TextStyle(color: Colors.black54, fontSize: 12)),
-              const SizedBox(height: 9),
+              Text(
+                fruit.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+              ),
+              const SizedBox(height: 3),
               Row(
                 children: [
-                  const Icon(Icons.star_rounded, size: 16, color: Color(0xFFF4B740)),
-                  const SizedBox(width: 3),
-                  const Text('4.9', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                  const Spacer(),
+                  const Icon(Icons.star_rounded, size: 14, color: Color(0xFFE2A62B)),
+                  const SizedBox(width: 2),
+                  Text(
+                    '${fruit.rating}',
+                    style: const TextStyle(fontSize: 11, color: Colors.black54),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '₱${fruit.price.toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                  ),
                   Container(
-                    width: 34,
-                    height: 34,
+                    width: 30,
+                    height: 30,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF176B45),
-                      borderRadius: BorderRadius.circular(11),
+                      color: const Color(0xFF315C35),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.add_rounded, color: Colors.white),
+                    child: const Icon(Icons.add, color: Colors.white, size: 19),
                   ),
                 ],
               ),
@@ -438,117 +465,150 @@ class _FruitDetailPageState extends State<FruitDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final fruit = widget.fruit;
-    final total = fruit.price * quantity;
+    final total = widget.fruit.price * quantity;
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton.filledTonal(
+        title: const Text('Product'),
+        leading: IconButton(
           onPressed: () => context.go('/'),
           icon: const Icon(Icons.arrow_back_rounded),
         ),
-        title: const Text('Product details', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
-          IconButton.filledTonal(onPressed: () {}, icon: const Icon(Icons.shopping_bag_outlined)),
-          const SizedBox(width: 12),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.favorite_border_rounded),
+          ),
+          const SizedBox(width: 8),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Total', style: TextStyle(color: Colors.black54, fontSize: 12)),
-                    Text('₱${total.toStringAsFixed(0)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-                  ],
-                ),
-              ),
-              FilledButton.icon(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${fruit.name} added to your cart')),
-                ),
-                icon: const Icon(Icons.shopping_bag_outlined),
-                label: const Text('Add to cart'),
-                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16)),
-              ),
-            ],
-          ),
-        ),
-      ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
-          Hero(
-            tag: fruit.name,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: AspectRatio(
-                aspectRatio: 1.1,
-                child: Image.network(
-                  fruit.imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: const Color(0xFFEAF2E9),
-                    alignment: Alignment.center,
-                    child: Text(fruit.emoji, style: const TextStyle(fontSize: 150)),
-                  ),
-                ),
-              ),
+          Container(
+            height: 220,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF1E6),
+              borderRadius: BorderRadius.circular(24),
             ),
+            alignment: Alignment.center,
+            child: Text(widget.fruit.emoji, style: const TextStyle(fontSize: 128)),
           ),
           const SizedBox(height: 20),
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: const Color(0xFFE8F3EC), borderRadius: BorderRadius.circular(10)),
-                child: Text(fruit.category, style: const TextStyle(color: Color(0xFF176B45), fontWeight: FontWeight.w800, fontSize: 12)),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF1E6),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'FRESH PICK',
+                  style: TextStyle(
+                    color: Color(0xFF315C35),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
               const Spacer(),
-              const Icon(Icons.star_rounded, color: Color(0xFFF4B740), size: 19),
+              const Icon(Icons.star_rounded, size: 18, color: Color(0xFFE2A62B)),
               const SizedBox(width: 3),
-              const Text('4.9  •  128 reviews', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              Text('${widget.fruit.rating} (${widget.fruit.reviews})'),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(fruit.name, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 5),
-          Text('₱${fruit.price.toStringAsFixed(0)} / pack', style: const TextStyle(fontSize: 20, color: Color(0xFF176B45), fontWeight: FontWeight.w800)),
-          const SizedBox(height: 14),
-          Text(fruit.description, style: const TextStyle(fontSize: 16, height: 1.5, color: Colors.black54)),
-          const SizedBox(height: 22),
-          const Text('Quantity', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 10),
+          Text(
+            widget.fruit.name,
+            style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            widget.fruit.description,
+            style: const TextStyle(color: Colors.black54, fontSize: 14),
+          ),
+          const SizedBox(height: 17),
+          Text(
+            '₱${widget.fruit.price.toStringAsFixed(0)} / kg',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 18),
+          const Divider(),
+          const SizedBox(height: 8),
           Row(
             children: [
-              IconButton.filledTonal(
-                onPressed: quantity == 1 ? null : () => setState(() => quantity--),
-                icon: const Icon(Icons.remove_rounded),
+              const Expanded(
+                child: Text(
+                  'Quantity',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
-              SizedBox(width: 48, child: Text('$quantity', textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
-              IconButton.filledTonal(
+              _QuantityButton(
+                icon: Icons.remove,
+                onPressed: quantity > 1
+                    ? () => setState(() => quantity--)
+                    : null,
+              ),
+              SizedBox(
+                width: 42,
+                child: Center(
+                  child: Text(
+                    '$quantity',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+              _QuantityButton(
+                icon: Icons.add,
                 onPressed: () => setState(() => quantity++),
-                icon: const Icon(Icons.add_rounded),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          const Text('Why you’ll love it', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 19)),
-          const SizedBox(height: 12),
-          const Row(
-            children: [
-              _Benefit(icon: Icons.local_shipping_outlined, title: 'Fast delivery', subtitle: 'Same-day available'),
-              SizedBox(width: 10),
-              _Benefit(icon: Icons.eco_outlined, title: 'Farm fresh', subtitle: 'Picked with care'),
-            ],
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.local_shipping_outlined, color: Color(0xFF315C35)),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Fresh delivery • Same-day preparation',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          FilledButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${widget.fruit.name} added to cart!')),
+              );
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF315C35),
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Add to cart', style: TextStyle(fontWeight: FontWeight.w800)),
+                Text(
+                  '₱${total.toStringAsFixed(0)}',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -556,26 +616,18 @@ class _FruitDetailPageState extends State<FruitDetailPage> {
   }
 }
 
-class _Benefit extends StatelessWidget {
-  const _Benefit({required this.icon, required this.title, required this.subtitle});
+class _QuantityButton extends StatelessWidget {
+  const _QuantityButton({required this.icon, required this.onPressed});
+
   final IconData icon;
-  final String title;
-  final String subtitle;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: const Color(0xFFF7F8F4), borderRadius: BorderRadius.circular(18)),
-        child: Row(
-          children: [
-            Icon(icon, color: const Color(0xFF176B45)),
-            const SizedBox(width: 9),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)), Text(subtitle, style: const TextStyle(fontSize: 10, color: Colors.black54))])),
-          ],
-        ),
-      ),
+    return IconButton.filledTonal(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 17),
+      visualDensity: VisualDensity.compact,
     );
   }
 }
@@ -589,7 +641,7 @@ class FruitNotFoundPage extends StatelessWidget {
       body: Center(
         child: FilledButton.icon(
           onPressed: () => context.go('/'),
-          icon: const Icon(Icons.storefront_outlined),
+          icon: const Icon(Icons.storefront_rounded),
           label: const Text('Back to shop'),
         ),
       ),
