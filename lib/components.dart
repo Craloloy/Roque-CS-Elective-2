@@ -10,41 +10,218 @@ void toast(
   IconData icon = Icons.info_outline_rounded,
   String? actionLabel,
   VoidCallback? onAction,
-  Duration duration = const Duration(milliseconds: 2000),
+  String? secondaryActionLabel,
+  VoidCallback? onSecondaryAction,
+  Duration duration = const Duration(milliseconds: 3000),
 }) {
   ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  final hasMultipleActions = actionLabel != null && secondaryActionLabel != null;
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       behavior: SnackBarBehavior.floating,
-      backgroundColor: Brand.navy,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: EdgeInsets.zero,
       dismissDirection: DismissDirection.horizontal,
-      content: Row(
-        children: [
-          Icon(icon, color: Brand.gold, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                fontSize: 13.5,
-              ),
+      content: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Brand.navy,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Brand.gold, width: 1.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 18,
+                  spreadRadius: 1,
+                  offset: Offset(0, 6),
+                ),
+              ],
             ),
+            child: hasMultipleActions
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: Brand.blue.withValues(alpha: .35),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Brand.gold.withValues(alpha: .6),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Icon(icon, color: Brand.gold, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              message,
+                              style: const TextStyle(
+                                fontFamily: 'Manrope',
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                fontSize: 13.5,
+                                letterSpacing: 0.1,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                onSecondaryAction?.call();
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: .08),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: .28),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Text(
+                                  secondaryActionLabel,
+                                  style: const TextStyle(
+                                    fontFamily: 'Manrope',
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                onAction?.call();
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Brand.gold.withValues(alpha: .18),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Brand.gold, width: 1.2),
+                                ),
+                                child: Text(
+                                  actionLabel,
+                                  style: const TextStyle(
+                                    fontFamily: 'Manrope',
+                                    fontWeight: FontWeight.w800,
+                                    color: Brand.gold,
+                                    fontSize: 12,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Brand.blue.withValues(alpha: .35),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Brand.gold.withValues(alpha: .6),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Icon(icon, color: Brand.gold, size: 20),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          message,
+                          style: const TextStyle(
+                            fontFamily: 'Manrope',
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            fontSize: 13.5,
+                            letterSpacing: 0.1,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                      if (actionLabel != null) ...[
+                        const SizedBox(width: 12),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                              onAction?.call();
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 9,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Brand.gold.withValues(alpha: .15),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Brand.gold, width: 1.2),
+                              ),
+                              child: Text(
+                                actionLabel,
+                                style: const TextStyle(
+                                  fontFamily: 'Manrope',
+                                  fontWeight: FontWeight.w800,
+                                  color: Brand.gold,
+                                  fontSize: 12.5,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
           ),
-        ],
+        ),
       ),
-      action: actionLabel == null
-          ? null
-          : SnackBarAction(
-              label: actionLabel,
-              textColor: Brand.gold,
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                onAction?.call();
-              },
-            ),
       duration: duration,
     ),
   );

@@ -154,7 +154,9 @@ class _ProductScreenState extends State<ProductScreen> {
           ? 'Reservation added. Complete checkout to secure your item.'
           : 'Item added to your bag.',
       icon: Icons.check_circle_outline_rounded,
-      actionLabel: 'VIEW BAG',
+      secondaryActionLabel: 'Browse more',
+      onSecondaryAction: () {},
+      actionLabel: 'View bag',
       onAction: () => context.go('/cart'),
     );
     setState(() => adding = false);
@@ -591,12 +593,23 @@ class _ProductScreenState extends State<ProductScreen> {
         ),
         if (added || widget.store.count > 0) ...[
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => context.go('/cart'),
-              child: Text('View bag (${widget.store.count}) →'),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => context.go('/cart'),
+                  child: Text('View bag (${widget.store.count}) →'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => context.go('/'),
+                  icon: const Icon(Icons.storefront_outlined, size: 16),
+                  label: const Text('Browse more'),
+                ),
+              ),
+            ],
           ),
         ],
         const SizedBox(height: 22),

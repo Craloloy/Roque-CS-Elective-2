@@ -102,12 +102,12 @@ void main() {
       await tester.tap(find.byKey(const Key('addToCart')));
       await tester.pumpAndSettle();
 
-      // 2. Photo 2: Check formal alert with VIEW BAG action
+      // 2. Photo 2: Check formal alert with View bag action
       expect(find.text('Item added to your bag.'), findsOneWidget);
-      expect(find.text('VIEW BAG'), findsOneWidget);
+      expect(find.text('View bag'), findsOneWidget);
 
       // Navigate to checkout
-      await tester.tap(find.text('VIEW BAG'));
+      await tester.tap(find.text('View bag'));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('checkout')), findsOneWidget);
       await tester.tap(find.byKey(const Key('checkout')));
