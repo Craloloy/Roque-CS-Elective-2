@@ -1,36 +1,21 @@
 import 'package:flutter/material.dart';
-import '../models/pokemon.dart';
-import '../services/pokemon_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/pokemon_provider.dart';
+import 'pokemon_detail_screen.dart';
 import '../widgets/pokemon_card.dart';
 import '../widgets/pokedex_frame.dart';
 
 class PokedexScreen extends StatefulWidget {
-  const PokedexScreen({super.key, required this.onThemeChanged});
-  final ValueChanged<bool> onThemeChanged;
+  const PokedexScreen({super.key});
 
   @override
   State<PokedexScreen> createState() => _PokedexScreenState();
 }
 
 class _PokedexScreenState extends State<PokedexScreen> {
-  final PokemonService _service = PokemonService();
-  late Future<List<Pokemon>> _pokemonFuture;
-  Pokemon? _selected;
-  List<Pokemon> _pokemon = const [];
+  // Only view mechanics live here; all displayed data lives in Provider.
   final ScrollController _gridController = ScrollController();
   double _rowExtent = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _pokemonFuture = _loadList();
-  }
-
-  Future<List<Pokemon>> _loadList() async {
-    final pokemon = await _service.fetchPokemon();
-    if (mounted) setState(() { _pokemon = pokemon; });
-    return pokemon;
-  }
 
   @override
   void dispose() {
@@ -39,20 +24,16 @@ class _PokedexScreenState extends State<PokedexScreen> {
   }
 
   void _navigate(int delta) {
-    if (_pokemon.isEmpty) return;
-    final current = _pokemon.indexWhere((p) => p.id == _selected?.id);
-    if (current < 0) {
-      _select(_pokemon.first);
-      return;
-    }
-    if ((delta == -1 && current.isEven) || (delta == 1 && current.isOdd)) return;
-    final next = current + delta;
-    if (next >= 0 && next < _pokemon.length) _select(_pokemon[next]);
+    context.read<PokemonProvider>().navigate(delta);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _revealSelection();
+    });
   }
 
   void _revealSelection() {
     if (!_gridController.hasClients || _rowExtent <= 0) return;
-    final index = _pokemon.indexWhere((p) => p.id == _selected?.id);
+    final state = context.read<PokemonProvider>();
+    final index = state.pokemon.indexWhere((p) => p.id == state.selectedPokemon?.id);
     if (index < 0) return;
     final position = _gridController.position;
     final top = 16 + (index ~/ 2) * _rowExtent;
@@ -66,52 +47,56 @@ class _PokedexScreenState extends State<PokedexScreen> {
     );
   }
 
-  void _select(Pokemon pokemon) {
-    setState(() { _selected = pokemon; });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _revealSelection();
-    });
+  void _openPokemon(int id) {
+    context.read<PokemonProvider>().selectPokemon(id);
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => PokemonDetailScreen(pokemonId: id),
+    ));
   }
 
-  Widget _buildGrid() => FutureBuilder<List<Pokemon>>(
-    future: _pokemonFuture,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState != ConnectionState.done) {
-        return const Center(child: _PokeballLoader());
-      }
-      if (snapshot.hasError) {
-        return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('Unable to load Pokémon.'),
-          TextButton(
-            onPressed: () => setState(() { _pokemonFuture = _loadList(); }),
-            child: const Text('Retry'),
-          ),
-        ]));
-      }
-      final pokemon = snapshot.data ?? const <Pokemon>[];
-      if (pokemon.isEmpty) return const Center(child: Text('No Pokémon found.'));
-      return LayoutBuilder(builder: (context, constraints) {
-        _rowExtent = ((constraints.maxWidth - 48) / 2) / 0.66 + 16;
-        return GridView.builder(
+  Widget _buildGrid(PokemonProvider state) {
+    if (state.status == PokemonStatus.initial || state.isLoading) {
+      return const Center(child: _PokeballLoader());
+    }
+    if (state.status == PokemonStatus.error) {
+      return Center(child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(state.errorMessage ?? 'Unable to load Pokémon.',
+            textAlign: TextAlign.center),
+          TextButton(onPressed: state.refresh, child: const Text('Retry')),
+        ]),
+      ));
+    }
+    if (state.pokemon.isEmpty) {
+      return const Center(child: Text('No Pokémon found.'));
+    }
+    return LayoutBuilder(builder: (context, constraints) {
+      _rowExtent = ((constraints.maxWidth - 48) / 2) / 0.66 + 16;
+      return RefreshIndicator(
+        onRefresh: state.refresh,
+        child: GridView.builder(
           controller: _gridController,
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2, childAspectRatio: 0.66,
             crossAxisSpacing: 16, mainAxisSpacing: 16,
           ),
-          itemCount: pokemon.length,
+          itemCount: state.pokemon.length,
           itemBuilder: (context, index) => PokemonCard(
-            pokemon: pokemon[index],
-            selected: _selected?.id == pokemon[index].id,
-            onTap: () => _select(pokemon[index]),
+            pokemon: state.pokemon[index],
+            selected: state.selectedPokemon?.id == state.pokemon[index].id,
+            onTap: () => _openPokemon(state.pokemon[index].id),
           ),
-        );
-      });
-    },
-  );
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<PokemonProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF101419) : const Color(0xFFF1F2F5),
@@ -122,11 +107,13 @@ class _PokedexScreenState extends State<PokedexScreen> {
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: PokedexFrame(
-                grid: _buildGrid(),
-                selectedPokemon: _selected,
-                onToggleDark: () => widget.onThemeChanged(!isDark),
+                grid: _buildGrid(state),
+                selectedPokemon: state.selectedPokemon,
+                onToggleDark: () => state.setDarkMode(!isDark),
+                onRefresh: state.refresh,
+                isLoading: state.isLoading,
                 onNavigate: _navigate,
-                navigationEnabled: _pokemon.isNotEmpty,
+                navigationEnabled: state.pokemon.isNotEmpty && !state.isLoading,
               ),
             ),
           ),

@@ -6,6 +6,11 @@ import 'package:http/http.dart' as http;
 import '../models/pokemon.dart';
 
 class PokemonService {
+  PokemonService({http.Client? client}) : _client = client ?? http.Client();
+
+  final http.Client _client;
+
+  void dispose() => _client.close();
   final Map<int, Map<String, dynamic>> _pokemonCache = {};
 
   Future<Map<String, dynamic>> _loadPokemon(int id) async {
@@ -17,7 +22,7 @@ class PokemonService {
   }
 
   Future<Map<String, dynamic>> _getJson(String path) async {
-    final response = await http.get(Uri.https('pokeapi.co', path))
+    final response = await _client.get(Uri.https('pokeapi.co', path))
         .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) {
       throw Exception('Unable to load Pokémon (${response.statusCode}).');
@@ -31,9 +36,10 @@ class PokemonService {
 
   // A Future fits because fetching produces one completed list.
   // A Stream would be appropriate for ongoing updates over time.
-  Future<List<Pokemon>> fetchPokemon() async {
+  Future<List<Pokemon>> fetchPokemon({bool forceRefresh = false}) async {
+    if (forceRefresh) _pokemonCache.clear();
     try {
-      final response = await http
+      final response = await _client
           .get(Uri.https('pokeapi.co', '/api/v2/pokemon', {'limit': '30'}))
           .timeout(const Duration(seconds: 15));
 

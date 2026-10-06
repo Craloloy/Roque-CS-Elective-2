@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 
+import 'package:provider/provider.dart';
+
+import 'providers/pokemon_provider.dart';
 import 'screens/pokedex_screen.dart';
 
 void main() {
-  runApp(const PokedexApp());
+  runApp(ChangeNotifierProvider(
+    create: (_) => PokemonProvider()..fetchPokemon(),
+    child: const PokedexApp(),
+  ));
 }
 
-class PokedexApp extends StatefulWidget {
+class PokedexApp extends StatelessWidget {
   const PokedexApp({super.key});
-
-  @override
-  State<PokedexApp> createState() => _PokedexAppState();
-}
-
-class _PokedexAppState extends State<PokedexApp> {
-  ThemeMode _themeMode = ThemeMode.system;
 
   @override
   Widget build(BuildContext context) {
@@ -34,12 +33,8 @@ class _PokedexAppState extends State<PokedexApp> {
         fontFamily: 'VT323',
         useMaterial3: true,
       ),
-      themeMode: _themeMode,
-      home: PokedexScreen(
-        onThemeChanged: (dark) => setState(() {
-          _themeMode = dark ? ThemeMode.dark : ThemeMode.light;
-        }),
-      ),
+      themeMode: context.watch<PokemonProvider>().themeMode,
+      home: const PokedexScreen(),
     );
   }
 }

@@ -12,11 +12,14 @@ class PokedexFrame extends StatelessWidget {
   const PokedexFrame({
     super.key, required this.grid, required this.selectedPokemon,
     required this.onToggleDark,
+    required this.onRefresh, required this.isLoading,
     required this.onNavigate, required this.navigationEnabled,
   });
   final Widget grid;
   final Pokemon? selectedPokemon;
   final VoidCallback onToggleDark;
+  final VoidCallback onRefresh;
+  final bool isLoading;
   final ValueChanged<int> onNavigate;
   final bool navigationEnabled;
 
@@ -44,6 +47,14 @@ class PokedexFrame extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: _displayStyle.copyWith(
                       color: isDark ? Colors.white : _ink, fontSize: 18)),
+                ),
+                Positioned(
+                  right: 8, bottom: 0,
+                  child: IconButton(
+                    tooltip: 'Refresh Pokémon',
+                    onPressed: isLoading ? null : onRefresh,
+                    icon: const Icon(Icons.refresh, size: 20),
+                  ),
                 ),
                 Positioned(
                   left: constraints.maxWidth * 0.15 - 24,
