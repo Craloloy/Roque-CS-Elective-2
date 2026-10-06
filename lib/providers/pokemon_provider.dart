@@ -15,10 +15,42 @@ class PokemonProvider extends ChangeNotifier {
   PokemonStatus _status = PokemonStatus.initial;
   String? _errorMessage;
   int? _selectedId;
+  String? _selectedType;
   ThemeMode _themeMode = ThemeMode.system;
   bool _disposed = false;
 
   List<Pokemon> get pokemon => _pokemon;
+  String? get selectedType => _selectedType;
+
+  List<String> get availableTypes {
+    final types = _pokemon.expand((pokemon) => pokemon.types).toSet().toList()..sort();
+    return List<String>.unmodifiable(types);
+  }
+
+  List<Pokemon> get visiblePokemon => _selectedType == null
+      ? _pokemon
+      : List<Pokemon>.unmodifiable(
+          _pokemon.where((pokemon) => pokemon.types.contains(_selectedType)));
+
+  int countForType(String? type) => type == null
+      ? _pokemon.length
+      : _pokemon.where((pokemon) => pokemon.types.contains(type)).length;
+
+  void filterByType(String? type) {
+    if (_disposed || isLoading ||
+        (type != null && !availableTypes.contains(type)) || type == _selectedType) return;
+    _selectedType = type;
+    _ensureVisibleSelection();
+    notifyListeners();
+  }
+
+  void _ensureVisibleSelection() {
+    final visible = visiblePokemon;
+    if (!visible.any((pokemon) => pokemon.id == _selectedId)) {
+      _selectedId = visible.isEmpty ? null : visible.first.id;
+    }
+  }
+
   PokemonStatus get status => _status;
   String? get errorMessage => _errorMessage;
   ThemeMode get themeMode => _themeMode;
@@ -42,9 +74,10 @@ class PokemonProvider extends ChangeNotifier {
       final result = await _service.fetchPokemon(forceRefresh: refresh);
       if (_disposed) return;
       _pokemon = List<Pokemon>.unmodifiable(result.take(30));
-      if (selectedPokemon == null) {
-        _selectedId = _pokemon.isEmpty ? null : _pokemon.first.id;
+      if (_selectedType != null && !availableTypes.contains(_selectedType)) {
+        _selectedType = null;
       }
+      _ensureVisibleSelection();
       _status = PokemonStatus.success;
     } catch (error) {
       if (_disposed) return;
@@ -57,23 +90,24 @@ class PokemonProvider extends ChangeNotifier {
   Future<void> refresh() => fetchPokemon(refresh: true);
 
   void selectPokemon(int id) {
-    if (_disposed || isLoading || pokemonById(id) == null) return;
+    if (_disposed || isLoading || !visiblePokemon.any((pokemon) => pokemon.id == id)) return;
     _selectedId = id;
     notifyListeners();
   }
 
   void navigate(int delta) {
-    if (_disposed || isLoading || _pokemon.isEmpty) return;
-    final current = _pokemon.indexWhere((p) => p.id == _selectedId);
+    final visible = visiblePokemon;
+    if (_disposed || isLoading || visible.isEmpty) return;
+    final current = visible.indexWhere((p) => p.id == _selectedId);
     if (current < 0) {
-      selectPokemon(_pokemon.first.id);
+      selectPokemon(visible.first.id);
       return;
     }
     if ((delta == -1 && current.isEven) ||
         (delta == 1 && current.isOdd)) return;
     final next = current + delta;
-    if (next >= 0 && next < _pokemon.length) {
-      selectPokemon(_pokemon[next].id);
+    if (next >= 0 && next < visible.length) {
+      selectPokemon(visible[next].id);
     }
   }
 

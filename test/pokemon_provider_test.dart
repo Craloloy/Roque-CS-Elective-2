@@ -13,8 +13,8 @@ import 'package:flutter_application_1/services/pokemon_service.dart';
 import 'package:flutter_application_1/widgets/pokedex_frame.dart';
 import 'package:flutter_application_1/screens/pokemon_detail_screen.dart';
 
-Pokemon entry(int id, {String? name}) =>
-    Pokemon(id: id, name: name ?? 'pokemon-$id', imageUrl: null);
+Pokemon entry(int id, {String? name, List<String> types = const []}) =>
+    Pokemon(id: id, name: name ?? 'pokemon-$id', imageUrl: null, types: types);
 
 class FakeService extends PokemonService {
   int calls = 0;
@@ -90,6 +90,70 @@ void main() {
     expect(state.selectedPokemon?.id, 2);
     state.setDarkMode(true);
     expect(state.themeMode, ThemeMode.dark);
+  });
+
+  test('Type filters include secondary types and keep navigation in the filtered list', () async {
+    final service = FakeService()..load = () async => [
+      entry(1, types: ['grass', 'poison']),
+      entry(2, types: ['water']),
+      entry(3, types: ['poison']),
+    ];
+    final state = PokemonProvider(service: service);
+    addTearDown(state.dispose);
+    await state.fetchPokemon();
+    expect(state.availableTypes, ['grass', 'poison', 'water']);
+    state.filterByType('poison');
+    expect(state.visiblePokemon.map((p) => p.id), [1, 3]);
+    expect(state.countForType('poison'), 2);
+    state.navigate(1);
+    expect(state.selectedPokemon?.id, 3);
+    state.filterByType('water');
+    expect(state.selectedPokemon?.id, 2);
+    state.selectPokemon(1);
+    expect(state.selectedPokemon?.id, 2);
+    state.filterByType('missing');
+    expect(state.selectedType, 'water');
+    state.filterByType(null);
+    expect(state.visiblePokemon, hasLength(3));
+    expect(service.calls, 1); // Filtering does not make another API call.
+  });
+
+  test('Refresh preserves a valid type and resets one that disappears', () async {
+    final service = FakeService()..load = () async => [entry(1, types: ['grass'])];
+    final state = PokemonProvider(service: service);
+    addTearDown(state.dispose);
+    await state.fetchPokemon();
+    state.filterByType('grass');
+    await state.refresh();
+    expect(state.selectedType, 'grass');
+    service.load = () async => [entry(2, types: ['water'])];
+    await state.refresh();
+    expect(state.selectedType, isNull);
+    expect(state.selectedPokemon?.id, 2);
+  });
+
+  testWidgets('Type chips filter cards and All restores the complete grid', (tester) async {
+    final state = PokemonProvider(service: FakeService()..load = () async => [
+      entry(1, types: ['grass', 'poison']),
+      entry(2, types: ['water']),
+      entry(3, types: ['grass']),
+    ]);
+    addTearDown(state.dispose);
+    await state.fetchPokemon();
+    await tester.pumpWidget(ChangeNotifierProvider.value(
+      value: state, child: const PokedexApp()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('type-grass')));
+    await tester.pumpAndSettle();
+    expect(state.visiblePokemon.map((p) => p.id), [1, 3]);
+    expect(find.text('2 / 3'), findsOneWidget);
+    expect(find.text('POKEMON-2'), findsNothing);
+    expect(find.byIcon(Icons.spa_rounded), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('type-all')));
+    await tester.pumpAndSettle();
+    expect(find.text('3 / 3'), findsOneWidget);
+    expect(find.text('POKEMON-2'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   test('A disposed Provider ignores completion of an in-flight request', () async {

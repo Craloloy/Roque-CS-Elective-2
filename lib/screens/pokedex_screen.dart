@@ -4,6 +4,7 @@ import '../providers/pokemon_provider.dart';
 import 'pokemon_detail_screen.dart';
 import '../widgets/pokemon_card.dart';
 import '../widgets/pokedex_frame.dart';
+import '../widgets/pokemon_type_filters.dart';
 
 class PokedexScreen extends StatefulWidget {
   const PokedexScreen({super.key});
@@ -35,7 +36,7 @@ class _PokedexScreenState extends State<PokedexScreen> {
   void _revealSelection() {
     if (!_gridController.hasClients || _rowExtent <= 0) return;
     final state = context.read<PokemonProvider>();
-    final index = state.pokemon.indexWhere((p) => p.id == state.selectedPokemon?.id);
+    final index = state.visiblePokemon.indexWhere((p) => p.id == state.selectedPokemon?.id);
     if (index < 0) return;
     final position = _gridController.position;
     final top = 16 + (index ~/ 2) * _rowExtent;
@@ -93,27 +94,38 @@ class _PokedexScreenState extends State<PokedexScreen> {
     if (state.pokemon.isEmpty) {
       return const Center(child: Text('No Pokémon found.'));
     }
-    return LayoutBuilder(builder: (context, constraints) {
-      _rowExtent = ((constraints.maxWidth - 48) / 2) / 0.66 + 16;
-      return RefreshIndicator(
-        onRefresh: state.refresh,
-        child: GridView.builder(
-          controller: _gridController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, childAspectRatio: 0.66,
-            crossAxisSpacing: 16, mainAxisSpacing: 16,
-          ),
-          itemCount: state.pokemon.length,
-          itemBuilder: (context, index) => PokemonCard(
-            pokemon: state.pokemon[index],
-            selected: state.selectedPokemon?.id == state.pokemon[index].id,
-            onTap: () => _openPokemon(state.pokemon[index].id),
-          ),
-        ),
-      );
-    });
+    final pokemon = state.visiblePokemon;
+    return Column(children: [
+      PokemonTypeFilters(onTypeChanged: (type) {
+        state.filterByType(type);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _gridController.hasClients) _gridController.jumpTo(0);
+        });
+      }),
+      Expanded(child: pokemon.isEmpty
+        ? const Center(child: Text('No Pokémon match this type.'))
+        : LayoutBuilder(builder: (context, constraints) {
+          _rowExtent = ((constraints.maxWidth - 48) / 2) / 0.66 + 16;
+          return RefreshIndicator(
+            onRefresh: state.refresh,
+            child: GridView.builder(
+              controller: _gridController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2, childAspectRatio: 0.66,
+                crossAxisSpacing: 16, mainAxisSpacing: 16,
+              ),
+              itemCount: pokemon.length,
+              itemBuilder: (context, index) => PokemonCard(
+                pokemon: pokemon[index],
+                selected: state.selectedPokemon?.id == pokemon[index].id,
+                onTap: () => _openPokemon(pokemon[index].id),
+              ),
+            ),
+          );
+        })),
+    ]);
   }
 
   @override
@@ -155,7 +167,7 @@ class _PokedexScreenState extends State<PokedexScreen> {
                 onRefresh: state.refresh,
                 isLoading: state.isLoading,
                 onNavigate: _navigate,
-                navigationEnabled: state.pokemon.isNotEmpty && !state.isLoading,
+                navigationEnabled: state.visiblePokemon.isNotEmpty && !state.isLoading,
               ),
             ),
           ),
