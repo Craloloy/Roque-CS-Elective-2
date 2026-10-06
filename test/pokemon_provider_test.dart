@@ -10,6 +10,8 @@ import 'package:flutter_application_1/main.dart';
 import 'package:flutter_application_1/models/pokemon.dart';
 import 'package:flutter_application_1/providers/pokemon_provider.dart';
 import 'package:flutter_application_1/services/pokemon_service.dart';
+import 'package:flutter_application_1/widgets/pokedex_frame.dart';
+import 'package:flutter_application_1/screens/pokemon_detail_screen.dart';
 
 Pokemon entry(int id, {String? name}) =>
     Pokemon(id: id, name: name ?? 'pokemon-$id', imageUrl: null);
@@ -135,15 +137,25 @@ void main() {
     await tester.pumpWidget(ChangeNotifierProvider.value(
       value: state, child: const PokedexApp()));
     await tester.pumpAndSettle();
+    final frame = tester.element(find.byType(PokedexFrame));
+    final frameBounds = tester.getRect(find.byType(PokedexFrame));
     await tester.tap(find.text('POKEMON-2'));
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(tester.element(find.byType(PokedexFrame)), same(frame));
+    expect(tester.getRect(find.byType(PokedexFrame)), frameBounds);
+    expect(find.byType(FadeTransition), findsWidgets);
     await tester.pumpAndSettle();
-    expect(find.text('ID: #002'), findsOneWidget);
+    expect(find.text('ID: #002'), findsNWidgets(2));
+    expect(find.byType(PokemonDetailScreen), findsOneWidget);
+    expect(find.text('REFRESH'), findsOneWidget);
     service.load = () async => [entry(1), entry(2, name: 'updated')];
     await state.refresh();
     await tester.pumpAndSettle();
     expect(find.text('UPDATED'), findsNWidgets(2));
     await tester.pageBack();
     await tester.pumpAndSettle();
+    expect(find.byType(PokemonDetailScreen), findsNothing);
+    expect(tester.element(find.byType(PokedexFrame)), same(frame));
     await tester.tap(find.byTooltip('Refresh Pokémon'));
     await tester.pumpAndSettle();
     expect(service.calls, 3);

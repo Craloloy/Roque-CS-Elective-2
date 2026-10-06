@@ -15,6 +15,8 @@ class PokedexScreen extends StatefulWidget {
 class _PokedexScreenState extends State<PokedexScreen> {
   // Only view mechanics live here; all displayed data lives in Provider.
   final ScrollController _gridController = ScrollController();
+  final GlobalKey<NavigatorState> _displayNavigator = GlobalKey<NavigatorState>();
+  final HeroController _heroController = HeroController();
   double _rowExtent = 0;
 
   @override
@@ -49,8 +51,28 @@ class _PokedexScreenState extends State<PokedexScreen> {
 
   void _openPokemon(int id) {
     context.read<PokemonProvider>().selectPokemon(id);
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => PokemonDetailScreen(pokemonId: id),
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    _displayNavigator.currentState!.push(PageRouteBuilder<void>(
+      settings: RouteSettings(name: '/pokemon/$id'),
+      transitionDuration: Duration(milliseconds: reduceMotion ? 0 : 420),
+      reverseTransitionDuration: Duration(milliseconds: reduceMotion ? 0 : 320),
+      pageBuilder: (_, animation, secondaryAnimation) =>
+          PokemonDetailScreen(pokemonId: id),
+      transitionsBuilder: (_, animation, secondaryAnimation, child) {
+        final eased = CurvedAnimation(
+          parent: animation, curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: eased,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.12, 0.04), end: Offset.zero,
+            ).animate(eased),
+            child: child,
+          ),
+        );
+      },
     ));
   }
 
@@ -107,7 +129,27 @@ class _PokedexScreenState extends State<PokedexScreen> {
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: PokedexFrame(
-                grid: _buildGrid(state),
+                grid: ClipRect(
+                  child: NavigatorPopHandler<void>(
+                    onPopWithResult: (_) => _displayNavigator.currentState!.pop(),
+                    child: HeroControllerScope(
+                      controller: _heroController,
+                      child: Navigator(
+                        key: _displayNavigator,
+                        onGenerateRoute: (_) => MaterialPageRoute<void>(
+                          settings: const RouteSettings(name: '/'),
+                          builder: (_) => Consumer<PokemonProvider>(
+                            builder: (_, state, child) => Material(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? const Color(0xFF191E25) : Colors.white,
+                              child: _buildGrid(state),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 selectedPokemon: state.selectedPokemon,
                 onToggleDark: () => state.setDarkMode(!isDark),
                 onRefresh: state.refresh,

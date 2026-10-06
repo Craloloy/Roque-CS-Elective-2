@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/pokemon.dart';
 
@@ -49,11 +48,11 @@ class PokedexFrame extends StatelessWidget {
                       color: isDark ? Colors.white : _ink, fontSize: 18)),
                 ),
                 Positioned(
-                  right: 8, bottom: 0,
-                  child: IconButton(
-                    tooltip: 'Refresh Pokémon',
-                    onPressed: isLoading ? null : onRefresh,
-                    icon: const Icon(Icons.refresh, size: 20),
+                  right: 8, top: compact ? 12 : 22,
+                  width: 64, height: compact ? 46 : 60,
+                  child: _PokeballRefreshButton(
+                    onRefresh: onRefresh, isLoading: isLoading,
+                    compact: compact,
                   ),
                 ),
                 Positioned(
@@ -81,6 +80,7 @@ class PokedexFrame extends StatelessWidget {
                   BoxShadow(color: Color(0xFF777777), offset: Offset(3, 3)),
                 ],
               ),
+              clipBehavior: Clip.antiAlias,
               child: grid,
             ),
           ),
@@ -109,12 +109,12 @@ class PokedexFrame extends StatelessWidget {
                       style: _displayStyle.copyWith(fontSize: 19),
                     )),
                     const SizedBox(width: 8),
-                    Text(selectedPokemon == null
+                    Flexible(child: Text(selectedPokemon == null
                         ? '' : selectedPokemon!.types.isEmpty
                             ? 'POKÉMON'
                             : selectedPokemon!.types.join(' / ').toUpperCase(),
                       maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: _displayStyle.copyWith(fontSize: 16)),
+                      style: _displayStyle.copyWith(fontSize: 16))),
                   ]),
                 ),
                 const SizedBox(height: 8),
@@ -168,17 +168,7 @@ class _HeaderPainter extends CustomPainter {
         center: Alignment(-0.3, -0.3),
       ).createShader(Rect.fromCircle(center: light, radius: radius)));
     canvas.drawCircle(light, radius, stroke);
-    final ball = Offset(size.width * 0.88, size.height * 0.55);
-    final ballRadius = size.height * 0.22;
-    final bounds = Rect.fromCircle(center: ball, radius: ballRadius);
-    canvas.drawCircle(ball, ballRadius, Paint()..color = Colors.white);
-    canvas.drawArc(bounds, math.pi, math.pi, true,
-      Paint()..color = isDark ? const Color(0xFF9E2835) : const Color(0xFFFF363B));
-    canvas.drawLine(Offset(ball.dx - ballRadius, ball.dy),
-      Offset(ball.dx + ballRadius, ball.dy), stroke);
-    canvas.drawCircle(ball, ballRadius, stroke);
-    canvas.drawCircle(ball, ballRadius * 0.3, Paint()..color = Colors.white);
-    canvas.drawCircle(ball, ballRadius * 0.3, stroke);
+
   }
 
   @override
@@ -213,4 +203,109 @@ class _NavigationPad extends StatelessWidget {
     ]),
     _key(Icons.arrow_drop_down, 'Select Pokémon below', 2),
   ]);
+}
+
+/// The original header Poké Ball now acts as the refresh control.
+class _PokeballRefreshButton extends StatefulWidget {
+  const _PokeballRefreshButton({required this.onRefresh,
+    required this.isLoading, required this.compact});
+  final VoidCallback onRefresh;
+  final bool isLoading;
+  final bool compact;
+
+  @override
+  State<_PokeballRefreshButton> createState() => _PokeballRefreshButtonState();
+}
+
+class _PokeballRefreshButtonState extends State<_PokeballRefreshButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _rotation = AnimationController(
+    vsync: this, duration: const Duration(milliseconds: 1000));
+
+  void _syncAnimation() {
+    if (widget.isLoading && !MediaQuery.disableAnimationsOf(context)) {
+      _rotation.repeat();
+    } else {
+      _rotation.stop();
+      _rotation.value = 0;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PokeballRefreshButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncAnimation();
+  }
+
+  @override
+  void dispose() {
+    _rotation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white : _ink;
+    return Tooltip(
+      message: 'Refresh Pokémon',
+      child: Semantics(
+        button: true, enabled: !widget.isLoading,
+        label: widget.isLoading ? 'Refreshing Pokémon' : 'Refresh Pokémon',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.isLoading ? null : widget.onRefresh,
+            borderRadius: BorderRadius.circular(10),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              SizedBox(width: widget.compact ? 28 : 38,
+                height: widget.compact ? 28 : 38,
+                child: Stack(alignment: Alignment.center, children: [
+                  RotationTransition(turns: _rotation,
+                    child: const CustomPaint(
+                      size: Size.square(38), painter: _RefreshBallPainter())),
+                  Container(
+                    width: 21, height: 21,
+                    decoration: const BoxDecoration(
+                      color: Colors.white, shape: BoxShape.circle),
+                    child: const Icon(Icons.refresh, color: _ink, size: 19)),
+                ])),
+              Text(widget.isLoading ? 'SYNCING' : 'REFRESH',
+                style: _displayStyle.copyWith(
+                  color: ink, fontSize: widget.compact ? 11 : 13)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RefreshBallPainter extends CustomPainter {
+  const _RefreshBallPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final bounds = Rect.fromCircle(center: center, radius: size.shortestSide / 2 - 2);
+    final outline = Paint()..color = _ink
+      ..style = PaintingStyle.stroke..strokeWidth = 2.5;
+    canvas.drawOval(bounds, Paint()..color = Colors.white);
+    canvas.save();
+    canvas.clipPath(Path()..addOval(bounds));
+    canvas.drawRect(Rect.fromLTRB(0, 0, size.width, center.dy),
+      Paint()..color = const Color(0xFFFF5252));
+    canvas.drawLine(Offset(0, center.dy), Offset(size.width, center.dy), outline);
+    canvas.restore();
+    canvas.drawOval(bounds, outline);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RefreshBallPainter oldDelegate) => false;
 }

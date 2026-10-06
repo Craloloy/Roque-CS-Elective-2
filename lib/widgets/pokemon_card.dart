@@ -90,7 +90,9 @@ class PokemonCard extends StatelessWidget {
                         padding: const EdgeInsets.all(5),
                         child: pokemon.imageUrl == null
                           ? const Center(child: Icon(Icons.image_not_supported_outlined))
-                          : Image.network(
+                          : Hero(
+                            tag: 'pokemon-artwork-${pokemon.id}',
+                            child: Image.network(
                               pokemon.imageUrl!, fit: BoxFit.contain,
                               filterQuality: FilterQuality.medium,
                               semanticLabel: pokemon.name,
@@ -99,6 +101,7 @@ class PokemonCard extends StatelessWidget {
                               errorBuilder: (context, error, stackTrace) =>
                                 const Center(child: Icon(Icons.broken_image_outlined)),
                             ),
+                          ),
                       ),
                     ),
                     const SizedBox(height: 5),
