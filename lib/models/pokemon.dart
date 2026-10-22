@@ -1,6 +1,12 @@
 class Pokemon {
-  const Pokemon({required this.id, required this.name, required this.imageUrl,
-    this.types = const [], this.heightCm, this.weightKg});
+  const Pokemon({
+    required this.id,
+    required this.name,
+    required this.imageUrl,
+    this.types = const [],
+    this.heightCm,
+    this.weightKg,
+  });
 
   final int id;
   final String name;
@@ -14,7 +20,10 @@ class Pokemon {
     final name = json['name'];
     final id = json['id'];
     final sprites = json['sprites'];
-    if (name is! String || name.isEmpty || id is! int || id <= 0 ||
+    if (name is! String ||
+        name.isEmpty ||
+        id is! int ||
+        id <= 0 ||
         sprites is! Map<String, dynamic>) {
       throw const FormatException('Invalid Pokémon data.');
     }
@@ -36,8 +45,13 @@ class Pokemon {
         : <String>[];
     final height = json['height'];
     final weight = json['weight'];
-    return Pokemon(id: id, name: name, imageUrl: image as String?, types: types,
+    return Pokemon(
+      id: id,
+      name: name,
+      imageUrl: image as String?,
+      types: types,
       heightCm: height is int ? height * 10 : null,
-      weightKg: weight is num ? weight / 10 : null);
+      weightKg: weight is num ? weight / 10 : null,
+    );
   }
 }

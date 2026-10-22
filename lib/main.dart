@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
 
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'providers/pokemon_provider.dart';
+import 'state/pokedex_controller.dart';
 import 'screens/pokedex_screen.dart';
 
 void main() {
-  runApp(ChangeNotifierProvider(
-    create: (_) => PokemonProvider()..fetchPokemon(),
-    child: const PokedexApp(),
-  ));
+  runApp(const ProviderScope(child: PokedexApp()));
 }
 
-class PokedexApp extends StatelessWidget {
+class PokedexApp extends ConsumerWidget {
   const PokedexApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'Pokédex',
       debugShowCheckedModeBanner: false,
@@ -33,7 +30,7 @@ class PokedexApp extends StatelessWidget {
         fontFamily: 'VT323',
         useMaterial3: true,
       ),
-      themeMode: context.watch<PokemonProvider>().themeMode,
+      themeMode: ref.watch(pokedexProvider.select((state) => state.themeMode)),
       home: const PokedexScreen(),
     );
   }

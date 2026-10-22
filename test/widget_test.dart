@@ -4,13 +4,19 @@ import 'package:flutter_application_1/models/pokemon.dart';
 void main() {
   test('Reads trading-card types, height, and weight from the API', () {
     final pokemon = Pokemon.fromJson({
-      'name': 'bulbasaur', 'id': 1,
+      'name': 'bulbasaur',
+      'id': 1,
       'sprites': {'front_default': null},
       'types': [
-        {'type': {'name': 'grass'}},
-        {'type': {'name': 'poison'}},
+        {
+          'type': {'name': 'grass'},
+        },
+        {
+          'type': {'name': 'poison'},
+        },
       ],
-      'height': 7, 'weight': 69,
+      'height': 7,
+      'weight': 69,
     });
     expect(pokemon.types, ['grass', 'poison']);
     expect(pokemon.heightCm, 70);
@@ -24,7 +30,9 @@ void main() {
       'sprites': {
         'front_default': 'https://example.com/sprite.png',
         'other': {
-          'official-artwork': {'front_default': 'https://example.com/artwork.png'},
+          'official-artwork': {
+            'front_default': 'https://example.com/artwork.png',
+          },
         },
       },
     });
@@ -46,7 +54,8 @@ void main() {
   });
   test('Falls back to the API sprite when official artwork is missing', () {
     final pokemon = Pokemon.fromJson({
-      'name': 'bulbasaur', 'id': 1,
+      'name': 'bulbasaur',
+      'id': 1,
       'sprites': {'front_default': 'https://example.com/sprite.png'},
     });
     expect(pokemon.imageUrl, 'https://example.com/sprite.png');
@@ -54,7 +63,9 @@ void main() {
 
   test('Allows missing images without inventing a URL', () {
     final pokemon = Pokemon.fromJson({
-      'name': 'bulbasaur', 'id': 1, 'sprites': {'front_default': null},
+      'name': 'bulbasaur',
+      'id': 1,
+      'sprites': {'front_default': null},
     });
     expect(pokemon.imageUrl, isNull);
   });

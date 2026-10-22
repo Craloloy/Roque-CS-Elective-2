@@ -22,7 +22,8 @@ class PokemonService {
   }
 
   Future<Map<String, dynamic>> _getJson(String path) async {
-    final response = await _client.get(Uri.https('pokeapi.co', path))
+    final response = await _client
+        .get(Uri.https('pokeapi.co', path))
         .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) {
       throw Exception('Unable to load Pokémon (${response.statusCode}).');
@@ -57,18 +58,20 @@ class PokemonService {
       // Fetch in small batches; each response supplies the real image URL.
       for (var start = 0; start < entries.length; start += 5) {
         final batch = entries.skip(start).take(5);
-        final results = await Future.wait(batch.map((item) async {
-          if (item is! Map<String, dynamic> || item['url'] is! String) {
-            throw const FormatException('Invalid Pokémon data.');
-          }
-          final segments = Uri.parse(item['url'] as String)
-              .pathSegments.where((part) => part.isNotEmpty);
-          final id = segments.isEmpty ? null : int.tryParse(segments.last);
-          if (id == null || id <= 0) {
-            throw const FormatException('Invalid Pokémon ID.');
-          }
-          return Pokemon.fromJson(await _loadPokemon(id));
-        }));
+        final results = await Future.wait(
+          batch.map((item) async {
+            if (item is! Map<String, dynamic> || item['url'] is! String) {
+              throw const FormatException('Invalid Pokémon data.');
+            }
+            final segments = Uri.parse(item['url'] as String).pathSegments
+                .where((part) => part.isNotEmpty);
+            final id = segments.isEmpty ? null : int.tryParse(segments.last);
+            if (id == null || id <= 0) {
+              throw const FormatException('Invalid Pokémon ID.');
+            }
+            return Pokemon.fromJson(await _loadPokemon(id));
+          }),
+        );
         pokemon.addAll(results);
       }
       return pokemon;

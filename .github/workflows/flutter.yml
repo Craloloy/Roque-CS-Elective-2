@@ -2,9 +2,9 @@ name: Flutter checks
 
 on:
   push:
-    branches: [state-mgt-act]
+    branches: [midterm-exam]
   pull_request:
-    branches: [state-mgt-act]
+    branches: [midterm-exam]
 
 permissions:
   contents: read
@@ -21,3 +21,10 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      - run: flutter build web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: midterm-validated-build
+          path: |
+            pubspec.lock
+            build/web/

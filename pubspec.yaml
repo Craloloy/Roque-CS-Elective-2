@@ -1,5 +1,5 @@
 name: flutter_application_1
-description: "A new Flutter project."
+description: "Pokédex midterm — Riverpod, nicknames, favorites, and type filters."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   http: ^1.2.0
-  provider: ^6.1.5+1
+  flutter_riverpod: 3.0.3
 
 dev_dependencies:
   flutter_test:
