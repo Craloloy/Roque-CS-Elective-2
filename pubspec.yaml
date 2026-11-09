@@ -8,6 +8,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  supabase_flutter: ^2.10.3
+  flutter_riverpod: 3.0.3
   go_router: ^18.0.1
   qr_flutter: ^4.1.0
   shared_preferences: ^2.5.3
@@ -25,3 +27,4 @@ flutter:
     - family: Manrope
       fonts:
         - asset: assets/fonts/Manrope.ttf
+

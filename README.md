@@ -1,42 +1,49 @@
-# MagisStore
+# Campus Shop
 
-A Flutter prelim project for Ateneo de Davao campus essentials. The student journey replaces the bookstore paper slip and cashier trip with online ordering, payment confirmation, and one express pickup.
+Supabase product browsing with a price-range slider, 8 products per page, and Riverpod state management.
+
+## Setup
+
+Edit `lib/product_browser/supabase_config.dart`:
+
+```dart
+static const url = 'https://YOUR-PROJECT.supabase.co';
+static const anonKey = 'YOUR-CLIENT-PUBLISHABLE-OR-ANON-KEY';
+static const productsTable = 'products';
+```
+
+Use your project's client publishable/anon key from the Supabase dashboard. Keep service-role keys out of Flutter.
+
+The default table uses `id`, `name`, numeric `price`, and nullable `image_url`. If your column names differ, edit the query in `lib/product_browser/product_repository.dart` and the mapping in `product_models.dart`. For example, `name:title` aliases a `title` column to the expected `name`. If no image column exists, remove `image_url` from select; a placeholder will appear.
+
+For a new/demo database, run `sql/optional_demo_setup.sql` in Supabase SQL Editor. For an existing database, keep its schema and policies and adapt the repository. Your current user needs SELECT access under RLS.
 
 ## Run
 
-    flutter pub get
-    flutter run -d chrome
+```powershell
+flutter pub get
+flutter run -t lib/main_supabase.dart
+```
 
-## Verify
+This entry point opens the Supabase browsing activity. `lib/main.dart` still opens the original MagiStore app from `PrelimExam`.
 
-    flutter analyze
-    flutter test
-    flutter build web --no-web-resources-cdn
+## Existing update/delete features
 
-## Features
+Keep your current authenticated write operations. After a successful change, reload this module:
 
-- Responsive two-column phone grid, three or more columns on tablets.
-- Product categories, search, sorting, favorites, and an app-wide light/dark toggle.
-- Seven campus products with clean, rotatable geometry, zoom controls, and front/back rendered galleries.
-- Cart quantity controls and live subtotals.
-- Reservations for unavailable variants, pickup points, time slots, and payment confirmation.
-- Digital QR claim tickets and order history.
-- Navigation 2.0 through go_router, centralized ThemeData, and reusable Stateless/Stateful widgets.
+```dart
+await ref.read(productBrowserProvider.notifier).load(reloadBounds: true);
+```
 
-The default announcement is “New semester. Ready, set, Ateneo.” The app header uses the official Ateneo de Davao seal supplied by the user. The pin uses the supplied official seal as a front surface texture. No supplied photographs are displayed, used as model textures, or bundled in the release application. The staff section and camera scanner have been removed.
+This updates the price bounds and corrects the page after deleting the final items on the last page.
 
-## Classroom implementation
+## Checks
 
-This is a local academic prototype, not a live university store. Payment methods are simulated; no money moves and no credentials are collected. Prices, stock, pickup capacity, and restock timelines are fixtures. SharedPreferences persists state on the current device. The interface uses normal customer-facing wording; implementation limitations are documented here rather than repeated across screens.
+```powershell
+flutter analyze
+flutter test test/product_browser_test.dart
+```
 
-Checkout defaults to a successful local payment. Automated tests inject pending/failed outcomes through Store(paymentOutcome: ...), without an outcome selector in the user interface. Order processing and restock currently require repository updates; no live bookstore feed, push service, or authentication backend is connected. Production use would require authenticated server-side payments, inventory, fulfillment, and claim validation.
+Flutter tests and a live Supabase connection have not been run in the authoring environment. Supply your configuration and run these checks locally.
 
-The models are stylized reconstructions with approximate dimensions and simplified seal details. Update lib/reference_model.dart for geometry. Regenerate the catalog images with:
-
-    flutter test --no-pub tool/render_models.dart
-
-lib/product_viewer.dart owns the interactive viewer. lib/store.dart owns shared application state. main.dart defines routes. The source photos remain in the development folder only and are excluded from pubspec assets. Earlier illustration generators are legacy assets and are not the active model renderer.
-
-## Submission
-
-The exam requests the branch PrelimExam in your subject repository. Repository setup and submission remain your steps. Manrope is bundled under its SIL Open Font License in assets/fonts/OFL.txt.
+Price filtering uses Supabase `gte`/`lte`. Pagination uses inclusive `range` offsets with an exact filtered count. Rows sort by price and then ID for stable page boundaries. The state controller resets to page 1 on filter changes, ignores stale responses, and handles loading, errors/retry, and empty results.
