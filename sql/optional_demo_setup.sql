@@ -21,7 +21,7 @@ begin
   end if;
 end $$;
 
--- Add sample items with sql/carl_shop_sample_products.sql.
+-- Add sample items with sql/carltronics_sample_products.sql.
 
 -- This example deliberately grants SELECT only. Keep your existing properly
 -- scoped authentication and RLS policies for create/update/delete operations.

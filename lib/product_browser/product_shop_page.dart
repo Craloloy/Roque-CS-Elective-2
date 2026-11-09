@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'product_controller.dart';
 import 'product_models.dart';
+import 'laptop_artwork.dart';
 
 const _purple = Color(0xFF673AB7);
 const _ink = Color(0xFF29223E);
@@ -63,12 +64,12 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
             child: Row(children: [
               Container(width: 46, height: 46,
                 decoration: BoxDecoration(color: _purple, borderRadius: BorderRadius.circular(14)),
-                child: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 27)),
+                child: const Icon(Icons.laptop_mac_rounded, color: Colors.white, size: 27)),
               const SizedBox(width: 13),
               const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Carl Shop', style: TextStyle(fontSize: 27, color: _ink,
+                Text('Carltronics', style: TextStyle(fontSize: 25, color: _ink,
                   fontWeight: FontWeight.w800, letterSpacing: -0.8)),
-                Text('Your everyday, thoughtfully selected.',
+                Text('Tech for every kind of day.',
                   style: TextStyle(fontSize: 12, color: _muted)),
               ])),
               IconButton(tooltip: 'Refresh products', onPressed: state.loading ? null :
@@ -84,7 +85,7 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
             padding: EdgeInsets.fromLTRB(wide ? 40 : 16, 28, wide ? 40 : 16, 40),
             child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1280),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('HOME  /  ALL PRODUCTS', style: TextStyle(fontSize: 11,
+                const Text('HOME  /  LAPTOPS', style: TextStyle(fontSize: 11,
                   color: _muted, letterSpacing: 1.3, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 22),
                 Container(width: double.infinity, padding: EdgeInsets.all(wide ? 32 : 24),
@@ -92,14 +93,14 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
                     gradient: const LinearGradient(colors: [Color(0xFFEEE7F9), Color(0xFFF3EDF8), Color(0xFFE8F1F0)]),
                     borderRadius: BorderRadius.circular(16)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('THE CARL COLLECTION', style: TextStyle(color: _purple,
+                    const Text('THE CARLTRONICS COLLECTION', style: TextStyle(color: _purple,
                       fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 12),
-                    Text('Good finds. Your kind of everyday.',
+                    Text('From work mode to game mode.',
                       style: TextStyle(fontSize: wide ? 32 : 25, color: _ink,
                         fontWeight: FontWeight.w700, letterSpacing: -0.8)),
                     const SizedBox(height: 10),
-                    const Text('Discover campus essentials, wardrobe staples, and everyday accessories.',
+                    const Text('Find your next laptop for office work, studying, gaming, or creating.',
                       style: TextStyle(color: _muted, height: 1.5)),
                   ])),
                 const SizedBox(height: 30),
@@ -116,11 +117,11 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
                     Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: 18, runSpacing: 12, children: [
                         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const Text('All products', style: TextStyle(fontSize: 23,
+                          const Text('All laptops', style: TextStyle(fontSize: 23,
                             fontWeight: FontWeight.w700, color: _ink)),
                           const SizedBox(height: 5),
                           Text(state.loading ? 'Updating your selection…' :
-                            '${state.firstItem}–${state.lastItem} of ${state.total} products',
+                            '${state.firstItem}–${state.lastItem} of ${state.total} laptops',
                             style: const TextStyle(color: _muted, fontSize: 13)),
                         ]),
                         if (!wide) OutlinedButton.icon(
@@ -135,7 +136,7 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
                       _StatusView(icon: Icons.cloud_off_rounded, message: state.error!,
                         label: 'Try again', onPressed: () => controller.load())
                     else if (state.products.isEmpty)
-                      _StatusView(icon: Icons.search_off_rounded, message: 'No products match your price range.',
+                      _StatusView(icon: Icons.search_off_rounded, message: 'No laptops match your price range.',
                         label: 'Clear filters', onPressed: state.initialized ? controller.clearPrices : null)
                     else LayoutBuilder(builder: (context, constraints) {
                       final width = constraints.maxWidth;
@@ -143,7 +144,7 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
                       return GridView.builder(
                         shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: columns, mainAxisExtent: 285,
+                          crossAxisCount: columns, mainAxisExtent: 310,
                           crossAxisSpacing: 16, mainAxisSpacing: 20),
                         itemCount: state.products.length,
                         itemBuilder: (context, index) => _ProductCard(product: state.products[index]));
@@ -165,7 +166,7 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
                 const SizedBox(height: 38),
                 const Divider(color: _border),
                 const SizedBox(height: 16),
-                const Text('CARL SHOP     /     Considered essentials, everyday.',
+                const Text('CARLTRONICS     /     Work. Play. Create.',
                   style: TextStyle(color: _muted, fontSize: 11, letterSpacing: 0.4)),
               ]),
             )),
@@ -253,6 +254,11 @@ class _StatusView extends StatelessWidget {
 class _ProductCard extends StatelessWidget {
   const _ProductCard({required this.product});
   final ShopProduct product;
+  String? get laptopCategory {
+    final uri = Uri.tryParse(product.imageUrl ?? '');
+    return uri?.scheme == 'carltronics' && uri?.host == 'laptop'
+      ? uri!.pathSegments.firstOrNull : null;
+  }
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
@@ -261,16 +267,23 @@ class _ProductCard extends StatelessWidget {
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Expanded(child: Container(width: double.infinity, color: const Color(0xFFF1EEF6),
         padding: const EdgeInsets.all(18),
-        child: product.imageUrl == null || product.imageUrl!.isEmpty
-          ? const Icon(Icons.shopping_bag_outlined, size: 54, color: Color(0xFFB3A4CE))
+        child: laptopCategory != null
+          ? LaptopArtwork(category: laptopCategory!)
+          : product.imageUrl == null || product.imageUrl!.isEmpty
+          ? const Icon(Icons.laptop_mac_rounded, size: 54, color: Color(0xFFB3A4CE))
           : product.imageUrl!.startsWith('assets/')
           ? Image.asset(product.imageUrl!, fit: BoxFit.contain,
-              errorBuilder: (_, error, stack) => const Icon(Icons.shopping_bag_outlined, size: 48, color: _purple))
+              errorBuilder: (_, error, stack) => const Icon(Icons.laptop_mac_rounded, size: 48, color: _purple))
           : Image.network(product.imageUrl!, fit: BoxFit.contain,
             loadingBuilder: (context, child, progress) => progress == null ? child :
               const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-            errorBuilder: (_, error, stack) => const Icon(Icons.shopping_bag_outlined, size: 48, color: _purple)))),
+            errorBuilder: (_, error, stack) => const Icon(Icons.laptop_mac_rounded, size: 48, color: _purple)))),
       Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (laptopCategory != null) ...[
+          Text(laptopCategoryLabel(laptopCategory!).toUpperCase(),
+            style: const TextStyle(color: _purple, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 7),
+        ],
         Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 14, color: _ink, height: 1.4, fontWeight: FontWeight.w500)),
         const SizedBox(height: 12),

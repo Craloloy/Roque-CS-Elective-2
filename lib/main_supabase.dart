@@ -22,7 +22,7 @@ class ProductBrowserExample extends StatelessWidget {
   const ProductBrowserExample({super.key});
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Carl Shop', debugShowCheckedModeBanner: false,
+    title: 'Carltronics', debugShowCheckedModeBanner: false,
     theme: ThemeData(
       useMaterial3: true,
       fontFamily: 'Manrope',
