@@ -22,7 +22,27 @@ class ProductBrowserExample extends StatelessWidget {
   const ProductBrowserExample({super.key});
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Campus Shop', debugShowCheckedModeBanner: false,
-    theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6750A4)), useMaterial3: true),
+    title: 'Carl Shop', debugShowCheckedModeBanner: false,
+    theme: ThemeData(
+      useMaterial3: true,
+      fontFamily: 'Manrope',
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF673AB7)),
+      scaffoldBackgroundColor: const Color(0xFFF7F5FA),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFFAF8FD),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE6E1ED))),
+      ),
+      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)))),
+      outlinedButtonTheme: OutlinedButtonThemeData(style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)))),
+    ),
     home: const ProductShopPage());
 }

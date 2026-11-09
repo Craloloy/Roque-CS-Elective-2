@@ -21,11 +21,7 @@ begin
   end if;
 end $$;
 
--- Seed only a completely empty table. Adds enough rows for three pages.
-insert into public.products (name, price)
-select 'Campus item ' || n, (n * 25)::numeric
-from generate_series(1, 20) as n
-where not exists (select 1 from public.products);
+-- Add sample items with sql/carl_shop_sample_products.sql.
 
 -- This example deliberately grants SELECT only. Keep your existing properly
 -- scoped authentication and RLS policies for create/update/delete operations.
