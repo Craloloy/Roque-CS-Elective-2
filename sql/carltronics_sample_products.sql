@@ -3,6 +3,42 @@
 -- The app renders generic laptop illustrations for carltronics:// image URIs.
 begin;
 
+-- Ensure CRUD permissions and RLS policies are enabled for the activity demo.
+alter table public.products enable row level security;
+grant select, insert, update, delete on public.products to anon, authenticated;
+grant usage, select on sequence public.products_id_seq to anon, authenticated;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies
+      where schemaname = 'public' and tablename = 'products'
+      and policyname = 'shop_read_products') then
+    create policy shop_read_products on public.products
+      for select to anon, authenticated using (true);
+  end if;
+
+  if not exists (select 1 from pg_policies
+      where schemaname = 'public' and tablename = 'products'
+      and policyname = 'shop_insert_products') then
+    create policy shop_insert_products on public.products
+      for insert to anon, authenticated with check (true);
+  end if;
+
+  if not exists (select 1 from pg_policies
+      where schemaname = 'public' and tablename = 'products'
+      and policyname = 'shop_update_products') then
+    create policy shop_update_products on public.products
+      for update to anon, authenticated using (true) with check (true);
+  end if;
+
+  if not exists (select 1 from pg_policies
+      where schemaname = 'public' and tablename = 'products'
+      and policyname = 'shop_delete_products') then
+    create policy shop_delete_products on public.products
+      for delete to anon, authenticated using (true);
+  end if;
+end $$;
+
 -- Remove only unchanged merchandise inserted by the previous demo seed.
 delete from public.products existing
 using (values

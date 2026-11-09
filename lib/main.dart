@@ -5,13 +5,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'catalog_screen.dart';
 import 'checkout_screen.dart';
 import 'components.dart';
+import 'main_supabase.dart' as carltronics;
 import 'notifications_screen.dart';
 import 'order_screen.dart';
 import 'product_screen.dart';
 import 'store.dart';
 import 'theme.dart';
 
-Future<void> main() async {
+Future<void> main() => carltronics.main();
+
+Future<void> runMagisStoreApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   SharedPreferences? prefs;
   try {

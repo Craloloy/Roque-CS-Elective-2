@@ -1,22 +1,105 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/product_browser/product_controller.dart';
-import '../lib/product_browser/product_models.dart';
-import '../lib/product_browser/product_repository.dart';
+import 'package:flutter_ecommerce_app/product_browser/product_controller.dart';
+import 'package:flutter_ecommerce_app/product_browser/product_models.dart';
+import 'package:flutter_ecommerce_app/product_browser/product_repository.dart';
+import 'package:flutter_ecommerce_app/product_browser/product_shop_page.dart';
 
 class FakeRepository implements ProductRepository {
   final calls = <({PriceBand prices, int page})>[];
-  final products = List.generate(20, (i) => ShopProduct(id: '${i+1}', name: 'Item ${i+1}', price: (i+1)*25.0));
+  final products = List.generate(
+    20,
+    (i) => ShopProduct(
+      id: '${i + 1}',
+      name: 'Item ${i + 1}',
+      price: (i + 1) * 25.0,
+      imageUrl: 'carltronics://laptop/student',
+    ),
+  );
   Future<ProductPage> Function(PriceBand, int)? handler;
+  bool failMutations = false;
+
   @override
-  Future<PriceBand> fetchBounds() async => const PriceBand(0, 500);
+  Future<PriceBand> fetchBounds() async {
+    if (products.isEmpty) return const PriceBand(0, 100);
+    final prices = products.map((p) => p.price).toList()..sort();
+    final low = prices.first.floorToDouble();
+    final high = prices.last.ceilToDouble();
+    return PriceBand(low < 25 ? low : 0, high > low ? high : low + 1);
+  }
+
   @override
-  Future<ProductPage> fetchPage({required PriceBand prices, required int page}) async {
+  Future<ProductPage> fetchPage({
+    required PriceBand prices,
+    required int page,
+    String? category,
+    String search = '',
+  }) async {
     calls.add((prices: prices, page: page));
     if (handler != null) return handler!(prices, page);
-    final matches = products.where((p) => p.price >= prices.min && p.price <= prices.max).toList();
-    return ProductPage(matches.skip((page-1)*8).take(8).toList(), matches.length);
+    final matches =
+        products.where((p) {
+            if (p.price < prices.min || p.price > prices.max) return false;
+            if (category != null && p.laptopCategory != category) return false;
+            if (search.isNotEmpty &&
+                !p.name.toLowerCase().contains(search.toLowerCase())) {
+              return false;
+            }
+            return true;
+          }).toList()
+          ..sort((a, b) {
+            final byPrice = a.price.compareTo(b.price);
+            return byPrice != 0 ? byPrice : a.id.compareTo(b.id);
+          });
+    return ProductPage(
+      matches.skip((page - 1) * 8).take(8).toList(),
+      matches.length,
+    );
+  }
+
+  @override
+  Future<ShopProduct> createProduct({
+    required String name,
+    required double price,
+    String? imageUrl,
+  }) async {
+    if (failMutations) throw TimeoutException('Mutation timed out');
+    final created = ShopProduct(
+      id: '${products.length + 100}',
+      name: name.trim(),
+      price: price,
+      imageUrl: imageUrl,
+    );
+    products.add(created);
+    return created;
+  }
+
+  @override
+  Future<ShopProduct> updateProduct({
+    required String id,
+    required String name,
+    required double price,
+    String? imageUrl,
+  }) async {
+    if (failMutations) throw TimeoutException('Mutation timed out');
+    final index = products.indexWhere((p) => p.id == id);
+    if (index == -1) throw const FormatException('Product not found.');
+    final updated = ShopProduct(
+      id: id,
+      name: name.trim(),
+      price: price,
+      imageUrl: imageUrl,
+    );
+    products[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<void> deleteProduct(String id) async {
+    if (failMutations) throw TimeoutException('Mutation timed out');
+    products.removeWhere((p) => p.id == id);
   }
 }
 
@@ -24,11 +107,15 @@ void main() {
   late FakeRepository repository;
   late ProviderContainer container;
   late ProductBrowserController controller;
+
   setUp(() {
     repository = FakeRepository();
-    container = ProviderContainer(overrides: [productRepositoryProvider.overrideWithValue(repository)]);
+    container = ProviderContainer(
+      overrides: [productRepositoryProvider.overrideWithValue(repository)],
+    );
     controller = container.read(productBrowserProvider.notifier);
   });
+
   tearDown(() => container.dispose());
 
   test('eight per page, correct totals and final partial page', () async {
@@ -75,8 +162,8 @@ void main() {
   test('a stale response cannot replace a newer filter result', () async {
     await controller.load();
     final old = Completer<ProductPage>();
-    repository.handler = (prices, page) async => prices.min == 10
-      ? old.future : const ProductPage([], 0);
+    repository.handler = (prices, page) async =>
+        prices.min == 10 ? old.future : const ProductPage([], 0);
     final oldRequest = controller.applyPrices(const PriceBand(10, 50));
     await controller.applyPrices(const PriceBand(100, 200));
     old.complete(ProductPage([repository.products.first], 1));
@@ -86,7 +173,8 @@ void main() {
   });
 
   test('error clears busy state and a retry recovers', () async {
-    repository.handler = (prices, page) async => throw TimeoutException('Offline');
+    repository.handler = (prices, page) async =>
+        throw TimeoutException('Offline');
     await controller.load();
     expect(container.read(productBrowserProvider).loading, false);
     expect(container.read(productBrowserProvider).error, contains('timed out'));
@@ -99,10 +187,105 @@ void main() {
   test('deleting the last item on the final page returns to a valid page', () async {
     await controller.load();
     await controller.goToPage(3);
-    repository.products.removeRange(16, 20);
-    await controller.load(reloadBounds: true);
-    expect(container.read(productBrowserProvider).page, 2);
-    expect(container.read(productBrowserProvider).total, 16);
-    expect(container.read(productBrowserProvider).products.length, 8);
+    for (final id in ['17', '18', '19', '20']) {
+      final ok = await controller.deleteProduct(id);
+      expect(ok, isTrue);
+    }
+    final state = container.read(productBrowserProvider);
+    expect(state.page, 2);
+    expect(state.total, 16);
+    expect(state.products.length, 8);
+  });
+
+  test('updating and creating products refreshes list and price bounds', () async {
+    await controller.load();
+    final updated = await controller.updateProduct(
+      id: '1',
+      name: 'Lenovo V14 Upgraded',
+      price: 750.0,
+      imageUrl: 'carltronics://laptop/gaming',
+    );
+    expect(updated, isTrue);
+    var state = container.read(productBrowserProvider);
+    expect(state.bounds.max, 750.0);
+    expect(state.selected.max, 750.0);
+
+    final created = await controller.createProduct(
+      name: 'ASUS ProArt Studio',
+      price: 900.0,
+      imageUrl: 'carltronics://laptop/creator',
+    );
+    expect(created, isTrue);
+    state = container.read(productBrowserProvider);
+    expect(state.total, 21);
+    expect(state.bounds.max, 900.0);
+  });
+
+  testWidgets('phone UI renders cards, edits, deletes, and filters without overflow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [productRepositoryProvider.overrideWithValue(repository)],
+        child: const MaterialApp(home: ProductShopPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Apex Computing'), findsOneWidget);
+    expect(find.text('1–8 of 20 laptops'), findsOneWidget);
+    expect(find.text('Item 1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // Open Filter Bottom Sheet from the bottom
+    await tester.tap(find.byKey(const Key('openFiltersButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Filter by Price'), findsOneWidget);
+    await tester.tap(find.byTooltip('Close filters'));
+    await tester.pumpAndSettle();
+
+    // Tap Item 1 to navigate to the dedicated ProductDetailPage (next page)
+    await tester.tap(find.text('Item 1'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProductDetailPage), findsOneWidget);
+    expect(find.text('SPECIFICATIONS'), findsOneWidget);
+    await tester.tap(find.byTooltip('Back to catalog'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProductDetailPage), findsNothing);
+
+    // Edit Item 1 on phone screen
+    await tester.tap(find.byKey(const Key('edit_1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit laptop'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('productNameField')),
+      'Lenovo V14 Gen 4',
+    );
+    await tester.enterText(
+      find.byKey(const Key('productPriceField')),
+      '20.00',
+    );
+    await tester.tap(find.byKey(const Key('saveProductButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lenovo V14 Gen 4'), findsOneWidget);
+    expect(find.text('₱20.00'), findsOneWidget);
+
+    // Delete Item 1 on phone screen
+    await tester.tap(find.byKey(const Key('delete_1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete laptop?'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('confirmDeleteButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lenovo V14 Gen 4'), findsNothing);
+    expect(find.text('1–8 of 19 laptops'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
