@@ -32,7 +32,14 @@ String _categorySamplePhoto(String category) => switch (category) {
 };
 
 class ProductShopPage extends ConsumerStatefulWidget {
-  const ProductShopPage({super.key});
+  const ProductShopPage({
+    super.key,
+    this.canManageCatalog = false,
+    this.accountAction,
+  });
+
+  final bool canManageCatalog;
+  final Widget? accountAction;
   @override
   ConsumerState<ProductShopPage> createState() => _ProductShopPageState();
 }
@@ -194,7 +201,10 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
   Future<void> _openProductPage(ShopProduct product) async {
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (_) => ProductDetailPage(initialProduct: product),
+        builder: (_) => ProductDetailPage(
+          initialProduct: product,
+          canManageCatalog: widget.canManageCatalog,
+        ),
       ),
     );
     if (result != null && mounted) {
@@ -269,33 +279,34 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
                               ],
                             ),
                           ),
-                          FilledButton.icon(
-                            key: const Key('addProductButton'),
-                            onPressed: state.loading || state.submitting
-                                ? null
-                                : _openCreateDialog,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _ink,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(0, 36),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+                          if (widget.canManageCatalog)
+                            FilledButton.icon(
+                              key: const Key('addProductButton'),
+                              onPressed: state.loading || state.submitting
+                                  ? null
+                                  : _openCreateDialog,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: _ink,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(0, 36),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
-                              visualDensity: VisualDensity.compact,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                              icon: const Icon(Icons.add_rounded, size: 16),
+                              label: const Text(
+                                'Add laptop',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                            icon: const Icon(Icons.add_rounded, size: 16),
-                            label: const Text(
-                              'Add laptop',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
                           const SizedBox(width: 4),
                           IconButton(
                             tooltip: 'Refresh products',
@@ -309,6 +320,7 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
                               size: 20,
                             ),
                           ),
+                          if (widget.accountAction != null) widget.accountAction!,
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -587,6 +599,7 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
                                     return _ProductCard(
                                       product: product,
                                       busy: state.submitting,
+                                      canManageCatalog: widget.canManageCatalog,
                                       onTap: () => _openProductPage(product),
                                       onEdit: () => _openEditDialog(product),
                                       onDelete: () =>
@@ -698,7 +711,12 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
 
 /// Dedicated next-page screen for viewing a laptop and performing Update/Delete.
 class ProductDetailPage extends ConsumerStatefulWidget {
-  const ProductDetailPage({super.key, required this.initialProduct});
+  const ProductDetailPage({
+    super.key,
+    required this.initialProduct,
+    this.canManageCatalog = false,
+  });
+  final bool canManageCatalog;
   final ShopProduct initialProduct;
 
   @override
@@ -770,17 +788,19 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Edit laptop',
-            onPressed: _handleEdit,
-            icon: const Icon(Icons.edit_outlined, color: _ink),
-          ),
-          IconButton(
-            tooltip: 'Delete laptop',
-            onPressed: _handleDelete,
-            icon: const Icon(Icons.delete_outline_rounded, color: _danger),
-          ),
-          const SizedBox(width: 4),
+          if (widget.canManageCatalog) ...[
+            IconButton(
+              tooltip: 'Edit laptop',
+              onPressed: _handleEdit,
+              icon: const Icon(Icons.edit_outlined, color: _ink),
+            ),
+            IconButton(
+              tooltip: 'Delete laptop',
+              onPressed: _handleDelete,
+              icon: const Icon(Icons.delete_outline_rounded, color: _danger),
+            ),
+            const SizedBox(width: 4),
+          ],
         ],
       ),
       body: SafeArea(
@@ -882,33 +902,35 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
                           ],
                         ),
                       ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: _handleEdit,
-                            icon: const Icon(Icons.edit_outlined, size: 18),
-                            label: const Text('Edit laptop'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _handleDelete,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _danger,
-                              side: const BorderSide(color: _danger),
+                    if (widget.canManageCatalog) ...[
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _handleEdit,
+                              icon: const Icon(Icons.edit_outlined, size: 18),
+                              label: const Text('Edit laptop'),
                             ),
-                            icon: const Icon(
-                              Icons.delete_outline_rounded,
-                              size: 18,
-                            ),
-                            label: const Text('Delete laptop'),
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _handleDelete,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _danger,
+                                side: const BorderSide(color: _danger),
+                              ),
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 18,
+                              ),
+                              label: const Text('Delete laptop'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1264,12 +1286,14 @@ class _ProductCard extends StatelessWidget {
   const _ProductCard({
     required this.product,
     required this.busy,
+    required this.canManageCatalog,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
   });
   final ShopProduct product;
   final bool busy;
+  final bool canManageCatalog;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -1370,64 +1394,66 @@ class _ProductCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 7),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 30,
-                            child: OutlinedButton.icon(
-                              key: Key('edit_${product.id}'),
-                              onPressed: busy ? null : onEdit,
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: _ink,
-                                side: const BorderSide(color: _border),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
+                    if (canManageCatalog) ...[
+                      const SizedBox(height: 7),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 30,
+                              child: OutlinedButton.icon(
+                                key: Key('edit_${product.id}'),
+                                onPressed: busy ? null : onEdit,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: _ink,
+                                  side: const BorderSide(color: _border),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
                                 ),
+                                icon: const Icon(Icons.edit_outlined, size: 13),
+                                label: const Text(
+                                  'Edit',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          SizedBox(
+                            height: 30,
+                            width: 32,
+                            child: IconButton.filledTonal(
+                              key: Key('delete_${product.id}'),
+                              tooltip: 'Delete ${product.name}',
+                              onPressed: busy ? null : onDelete,
+                              style: IconButton.styleFrom(
+                                backgroundColor: _dangerBg,
+                                foregroundColor: _danger,
+                                padding: EdgeInsets.zero,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                               ),
-                              icon: const Icon(Icons.edit_outlined, size: 13),
-                              label: const Text(
-                                'Edit',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 15,
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 5),
-                        SizedBox(
-                          height: 30,
-                          width: 32,
-                          child: IconButton.filledTonal(
-                            key: Key('delete_${product.id}'),
-                            tooltip: 'Delete ${product.name}',
-                            onPressed: busy ? null : onDelete,
-                            style: IconButton.styleFrom(
-                              backgroundColor: _dangerBg,
-                              foregroundColor: _danger,
-                              padding: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.delete_outline_rounded,
-                              size: 15,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

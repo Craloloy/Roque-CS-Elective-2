@@ -221,6 +221,27 @@ void main() {
     expect(state.bounds.max, 900.0);
   });
 
+  testWidgets('customers can browse but cannot manage laptops', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [productRepositoryProvider.overrideWithValue(repository)],
+        child: const MaterialApp(home: ProductShopPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Item 1'), findsOneWidget);
+    expect(find.byKey(const Key('addProductButton')), findsNothing);
+    expect(find.byKey(const Key('edit_1')), findsNothing);
+    expect(find.byKey(const Key('delete_1')), findsNothing);
+
+    await tester.tap(find.text('Item 1'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProductDetailPage), findsOneWidget);
+    expect(find.byTooltip('Edit laptop'), findsNothing);
+    expect(find.byTooltip('Delete laptop'), findsNothing);
+  });
+
   testWidgets('phone UI renders cards, edits, deletes, and filters without overflow', (
     tester,
   ) async {
@@ -232,7 +253,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [productRepositoryProvider.overrideWithValue(repository)],
-        child: const MaterialApp(home: ProductShopPage()),
+        child: const MaterialApp(home: ProductShopPage(canManageCatalog: true)),
       ),
     );
     await tester.pumpAndSettle();

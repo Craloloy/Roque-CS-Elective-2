@@ -28,57 +28,10 @@ class SupabaseProductRepository implements ProductRepository {
   final SupabaseClient client;
   final String table;
 
-  // Session fallback if Supabase RLS policies for INSERT/UPDATE/DELETE
-  // have not been applied in the SQL Editor yet.
-  final Map<String, ShopProduct> _updatedOverlay = {};
-  final Set<String> _deletedOverlay = {};
-  final List<ShopProduct> _createdOverlay = [];
-  int _localIdSeed = 900000;
-
-  bool get _hasLocalOverlay =>
-      _updatedOverlay.isNotEmpty ||
-      _deletedOverlay.isNotEmpty ||
-      _createdOverlay.isNotEmpty;
-
   Object _normalizeId(String id) => int.tryParse(id.trim()) ?? id.trim();
-
-  Future<List<ShopProduct>> _fetchMergedCatalog() async {
-    final rows = await client
-        .from(table)
-        .select('id,name,price,image_url')
-        .order('price', ascending: true)
-        .order('id', ascending: true)
-        .timeout(const Duration(seconds: 15));
-    final remoteIds = <String>{};
-    final merged = <ShopProduct>[];
-    for (final raw in rows) {
-      final item = ShopProduct.fromJson(raw);
-      remoteIds.add(item.id);
-      if (_deletedOverlay.contains(item.id)) continue;
-      merged.add(_updatedOverlay[item.id] ?? item);
-    }
-    for (final created in _createdOverlay) {
-      if (_deletedOverlay.contains(created.id) || remoteIds.contains(created.id)) {
-        continue;
-      }
-      merged.add(_updatedOverlay[created.id] ?? created);
-    }
-    merged.sort((a, b) {
-      final byPrice = a.price.compareTo(b.price);
-      return byPrice != 0 ? byPrice : a.id.compareTo(b.id);
-    });
-    return merged;
-  }
 
   @override
   Future<PriceBand> fetchBounds() async {
-    if (_hasLocalOverlay) {
-      final all = await _fetchMergedCatalog();
-      if (all.isEmpty) return const PriceBand(0, 100);
-      final low = all.first.price.floorToDouble();
-      final high = all.last.price.ceilToDouble();
-      return PriceBand(low, high > low ? high : low + 1);
-    }
     // Only two rows are requested, not the entire catalogue.
     // Note: postgrest .order() defaults to ascending: false, so ascending: true
     // must be passed explicitly for the minimum price query.
@@ -124,28 +77,6 @@ class SupabaseProductRepository implements ProductRepository {
     final to = from + ProductBrowserState.pageSize - 1;
     final trimmedSearch = search.trim();
 
-    if (_hasLocalOverlay) {
-      final all = await _fetchMergedCatalog();
-      final matches = all.where((p) {
-        if (p.price < prices.min || p.price > prices.max) return false;
-        if (category != null &&
-            category.isNotEmpty &&
-            p.laptopCategory != category) {
-          return false;
-        }
-        if (trimmedSearch.isNotEmpty &&
-            !p.name.toLowerCase().contains(trimmedSearch.toLowerCase())) {
-          return false;
-        }
-        return true;
-      }).toList();
-      final pageItems = matches
-          .skip(from)
-          .take(ProductBrowserState.pageSize)
-          .toList();
-      return ProductPage(pageItems, matches.length);
-    }
-
     // Filter first, then deterministically order and paginate on Supabase.
     // A unique ID breaks price ties so adjacent pages do not overlap.
     var query = client
@@ -189,31 +120,17 @@ class SupabaseProductRepository implements ProductRepository {
         ? null
         : cleanedUrl;
 
-    try {
-      final rows = await client
-          .from(table)
-          .insert({
-            'name': trimmedName,
-            'price': normalizedPrice,
-            'image_url': effectiveUrl,
-          })
-          .select('id,name,price,image_url')
-          .timeout(const Duration(seconds: 15));
-      if (rows.isNotEmpty) {
-        return ShopProduct.fromJson(rows.first);
-      }
-    } on PostgrestException {
-      // Fall through to session overlay if RLS policy is SELECT-only.
-    }
-
-    final fallback = ShopProduct(
-      id: '${++_localIdSeed}',
-      name: trimmedName,
-      price: normalizedPrice,
-      imageUrl: effectiveUrl,
-    );
-    _createdOverlay.add(fallback);
-    return fallback;
+    final row = await client
+        .from(table)
+        .insert({
+          'name': trimmedName,
+          'price': normalizedPrice,
+          'image_url': effectiveUrl,
+        })
+        .select('id,name,price,image_url')
+        .single()
+        .timeout(const Duration(seconds: 15));
+    return ShopProduct.fromJson(row);
   }
 
   @override
@@ -238,34 +155,21 @@ class SupabaseProductRepository implements ProductRepository {
         ? null
         : cleanedUrl;
 
-    try {
-      final rows = await client
-          .from(table)
-          .update({
-            'name': trimmedName,
-            'price': normalizedPrice,
-            'image_url': effectiveUrl,
-          })
-          .eq('id', _normalizeId(id))
-          .select('id,name,price,image_url')
-          .timeout(const Duration(seconds: 15));
-      if (rows.isNotEmpty) {
-        final updated = ShopProduct.fromJson(rows.first);
-        _updatedOverlay.remove(id);
-        return updated;
-      }
-    } on PostgrestException {
-      // Fall through to session overlay if RLS policy is SELECT-only.
+    final row = await client
+        .from(table)
+        .update({
+          'name': trimmedName,
+          'price': normalizedPrice,
+          'image_url': effectiveUrl,
+        })
+        .eq('id', _normalizeId(id))
+        .select('id,name,price,image_url')
+        .maybeSingle()
+        .timeout(const Duration(seconds: 15));
+    if (row == null) {
+      throw StateError('The product could not be updated. Check catalog access.');
     }
-
-    final fallback = ShopProduct(
-      id: id,
-      name: trimmedName,
-      price: normalizedPrice,
-      imageUrl: effectiveUrl,
-    );
-    _updatedOverlay[id] = fallback;
-    return fallback;
+    return ShopProduct.fromJson(row);
   }
 
   @override
@@ -273,25 +177,15 @@ class SupabaseProductRepository implements ProductRepository {
     if (id.trim().isEmpty) {
       throw ArgumentError.value(id, 'id');
     }
-    try {
-      final rows = await client
-          .from(table)
-          .delete()
-          .eq('id', _normalizeId(id))
-          .select('id')
-          .timeout(const Duration(seconds: 15));
-      if (rows.isNotEmpty) {
-        _deletedOverlay.remove(id);
-        _updatedOverlay.remove(id);
-        _createdOverlay.removeWhere((p) => p.id == id);
-        return;
-      }
-    } on PostgrestException {
-      // Fall through to session overlay if RLS policy is SELECT-only.
+    final row = await client
+        .from(table)
+        .delete()
+        .eq('id', _normalizeId(id))
+        .select('id')
+        .maybeSingle()
+        .timeout(const Duration(seconds: 15));
+    if (row == null) {
+      throw StateError('The product could not be deleted. Check catalog access.');
     }
-
-    _deletedOverlay.add(id);
-    _updatedOverlay.remove(id);
-    _createdOverlay.removeWhere((p) => p.id == id);
   }
 }
