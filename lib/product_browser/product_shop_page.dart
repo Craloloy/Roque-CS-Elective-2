@@ -5,6 +5,7 @@ import 'product_controller.dart';
 import 'product_models.dart';
 
 // tasteskill 2.5 palette: architectural monochrome & stone, zero violet/lavender.
+const _productDetailRoute = '/laptop-details';
 const _ink = Color(0xFF111111);
 const _muted = Color(0xFF5C5C56);
 const _canvas = Color(0xFFF6F6F3);
@@ -200,7 +201,8 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
 
   Future<void> _openProductPage(ShopProduct product) async {
     final result = await Navigator.of(context).push<String>(
-      MaterialPageRoute(
+      MaterialPageRoute<String>(
+        settings: const RouteSettings(name: _productDetailRoute),
         builder: (_) => ProductDetailPage(
           initialProduct: product,
           canManageCatalog: widget.canManageCatalog,
@@ -770,11 +772,53 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
     }
   }
 
+  void _backToStore() {
+    Navigator.of(context).popUntil(
+      (route) => route.isFirst || route.settings.name != _productDetailRoute,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final category = _product.laptopCategory;
     final width = MediaQuery.sizeOf(context).width;
-    final edge = width >= 1024 ? 32.0 : (width >= 600 ? 24.0 : 16.0);
+    final edge = width >= 600 ? 24.0 : 16.0;
+    const sectionGap = SizedBox(height: 16);
+    final summary = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (category != null) ...[
+          _CategoryPill(
+            label: laptopCategoryLabel(category),
+            selected: false,
+          ),
+          const SizedBox(height: 12),
+        ],
+        Semantics(
+          header: true,
+          child: Text(
+            _product.name,
+            style: const TextStyle(
+              fontSize: 26,
+              height: 1.2,
+              fontWeight: FontWeight.w800,
+              color: _ink,
+              letterSpacing: -0.6,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          money(_product.price),
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: _ink,
+          ),
+        ),
+      ],
+    );
 
     return Scaffold(
       backgroundColor: _canvas,
@@ -783,171 +827,155 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
         surfaceTintColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          tooltip: 'Back to catalog',
+          tooltip: 'Back',
           icon: const Icon(Icons.arrow_back_rounded, color: _ink),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: Text(
-          _product.name,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: _ink,
-          ),
+        title: const Text(
+          'Laptop details',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
         actions: [
-          if (widget.canManageCatalog) ...[
-            IconButton(
-              tooltip: 'Edit laptop',
-              onPressed: _handleEdit,
-              icon: const Icon(Icons.edit_outlined, color: _ink),
+          if (widget.canManageCatalog)
+            PopupMenuButton<String>(
+              tooltip: 'Manage laptop',
+              onSelected: (action) async {
+                if (action == 'edit') {
+                  await _handleEdit();
+                } else {
+                  await _handleDelete();
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'edit', child: Text('Edit laptop')),
+                PopupMenuItem(value: 'delete', child: Text('Delete laptop')),
+              ],
             ),
-            IconButton(
-              tooltip: 'Delete laptop',
-              onPressed: _handleDelete,
-              icon: const Icon(Icons.delete_outline_rounded, color: _danger),
-            ),
-            const SizedBox(width: 4),
-          ],
         ],
       ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: _border)),
+        ),
+        child: SafeArea(
+          top: false,
+          minimum: EdgeInsets.fromLTRB(edge, 10, edge, 10),
+          child: Center(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _backToStore,
+                  icon: const Icon(Icons.storefront_outlined, size: 19),
+                  label: const Text('Back to store'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
       body: SafeArea(
+        bottom: false,
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(edge, 20, edge, 32),
+          padding: EdgeInsets.fromLTRB(edge, 16, edge, 24),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _border),
-                ),
-                padding: EdgeInsets.all(width >= 600 ? 28 : 18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      height: width >= 600 ? 280 : 210,
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: _canvas,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: _ProductPhoto(product: _product),
-                    ),
-                    const SizedBox(height: 20),
-                    if (category != null)
-                      Text(
-                        laptopCategoryLabel(category).toUpperCase(),
-                        style: const TextStyle(
-                          color: _muted,
-                          fontSize: 11,
-                          letterSpacing: 1.2,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _product.name,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: _ink,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      money(_product.price),
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: _ink,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Divider(color: _border, height: 1),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'SPECIFICATIONS',
-                      style: TextStyle(
-                        fontSize: 11,
-                        letterSpacing: 1.1,
-                        fontWeight: FontWeight.w800,
-                        color: _muted,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    for (final spec in _product.detailedSpecs)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _DetailCard(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final wide = constraints.maxWidth >= 620;
+                        final photo = Container(
+                          height: wide ? 260 : 190,
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _canvas,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: _ProductPhoto(product: _product),
+                        );
+                        if (wide) {
+                          return Row(
+                            children: [
+                              Expanded(flex: 6, child: photo),
+                              const SizedBox(width: 24),
+                              Expanded(flex: 5, child: summary),
+                            ],
+                          );
+                        }
+                        return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 100,
-                              child: Text(
-                                spec.$1,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: _muted,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                          children: [photo, sectionGap, summary],
+                        );
+                      },
+                    ),
+                  ),
+                  sectionGap,
+                  _DetailCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Semantics(
+                          header: true,
+                          child: const Text(
+                            'Specifications',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
                             ),
-                            Expanded(
-                              child: Text(
-                                spec.$2,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: _ink,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    const SizedBox(height: 20),
-                    const Divider(color: _border, height: 1),
-                    const SizedBox(height: 16),
-                    _RelatedProducts(
+                        const SizedBox(height: 8),
+                        for (final spec in _product.detailedSpecs)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Flexible(
+                                  flex: 1,
+                                  fit: FlexFit.tight,
+                                  child: Text(
+                                    spec.$1,
+                                    style: const TextStyle(
+                                      color: _muted,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    spec.$2,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      height: 1.4,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  sectionGap,
+                  _DetailCard(
+                    child: _RelatedProducts(
                       product: _product,
                       canManageCatalog: widget.canManageCatalog,
                     ),
-                    if (widget.canManageCatalog) ...[
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: _handleEdit,
-                              icon: const Icon(Icons.edit_outlined, size: 18),
-                              label: const Text('Edit laptop'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _handleDelete,
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: _danger,
-                                side: const BorderSide(color: _danger),
-                              ),
-                              icon: const Icon(
-                                Icons.delete_outline_rounded,
-                                size: 18,
-                              ),
-                              label: const Text('Delete laptop'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -955,6 +983,22 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
       ),
     );
   }
+}
+
+class _DetailCard extends StatelessWidget {
+  const _DetailCard({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: _border),
+    ),
+    child: child,
+  );
 }
 
 class _RelatedProducts extends ConsumerWidget {
@@ -1002,7 +1046,13 @@ class _RelatedProducts extends ConsumerWidget {
                     leading: SizedBox(
                       width: 54,
                       height: 42,
-                      child: _ProductPhoto(product: item),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: _canvas,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: _ProductPhoto(product: item),
+                      ),
                     ),
                     title: Text(
                       item.name,
@@ -1013,7 +1063,8 @@ class _RelatedProducts extends ConsumerWidget {
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () async {
                       final result = await Navigator.of(context).push<String>(
-                        MaterialPageRoute(
+                        MaterialPageRoute<String>(
+                          settings: const RouteSettings(name: _productDetailRoute),
                           builder: (_) => ProductDetailPage(
                             initialProduct: item,
                             canManageCatalog: canManageCatalog,

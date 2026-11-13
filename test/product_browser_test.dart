@@ -251,19 +251,19 @@ void main() {
     expect(find.byTooltip('Delete laptop'), findsNothing);
   });
 
-  testWidgets('related laptops exclude the current product and open details', (
+  testWidgets('related laptops open details and Back to store exits both pages', (
     tester,
   ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [productRepositoryProvider.overrideWithValue(repository)],
-        child: MaterialApp(
-          home: ProductDetailPage(initialProduct: repository.products.first),
-        ),
+        child: const MaterialApp(home: ProductShopPage()),
       ),
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('Item 1'));
+    await tester.pumpAndSettle();
     expect(find.text('Related products'), findsOneWidget);
     expect(find.byKey(const ValueKey('related_product_1')), findsNothing);
     final nextProduct = find.byKey(const ValueKey('related_product_2'));
@@ -271,10 +271,12 @@ void main() {
     await tester.tap(nextProduct);
     await tester.pumpAndSettle();
 
-    expect(
-      find.descendant(of: find.byType(AppBar), matching: find.text('Item 2')),
-      findsOneWidget,
-    );
+    expect(find.text('Item 2'), findsOneWidget);
+
+    await tester.tap(find.text('Back to store'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProductShopPage), findsOneWidget);
+    expect(find.byType(ProductDetailPage), findsNothing);
   });
 
   testWidgets('phone UI renders cards, edits, deletes, and filters without overflow', (
@@ -309,8 +311,8 @@ void main() {
     await tester.tap(find.text('Item 1'));
     await tester.pumpAndSettle();
     expect(find.byType(ProductDetailPage), findsOneWidget);
-    expect(find.text('SPECIFICATIONS'), findsOneWidget);
-    await tester.tap(find.byTooltip('Back to catalog'));
+    expect(find.text('Specifications'), findsOneWidget);
+    await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     expect(find.byType(ProductDetailPage), findsNothing);
 
