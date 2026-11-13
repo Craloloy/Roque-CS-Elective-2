@@ -656,6 +656,22 @@ class _ProductScreenState extends State<ProductScreen> {
         ),
       ],
     );
+    final viewer = p.isStudyItem
+        ? Container(
+            key: viewerAnchor,
+            height: 270,
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: ProductImage(product: p),
+          )
+        : ProductViewer360(key: viewerAnchor, product: p);
+    final related = catalog.where(
+      (item) => item.active && item.id != p.id && item.category == p.category,
+    ).take(4).toList();
     return AppFrame(
       store: widget.store,
       bagKey: bagAnchor,
@@ -664,7 +680,7 @@ class _ProductScreenState extends State<ProductScreen> {
           TextButton.icon(
             onPressed: () => context.go('/'),
             icon: const Icon(Icons.arrow_back, size: 16),
-            label: const Text('Back to essentials'),
+            label: const Text('Back to store'),
           ),
           const SizedBox(height: 20),
           LayoutBuilder(
@@ -674,7 +690,7 @@ class _ProductScreenState extends State<ProductScreen> {
                     children: [
                       Expanded(
                         flex: 6,
-                        child: ProductViewer360(key: viewerAnchor, product: p),
+                        child: viewer,
                       ),
                       const SizedBox(width: 48),
                       Expanded(flex: 5, child: details),
@@ -682,17 +698,24 @@ class _ProductScreenState extends State<ProductScreen> {
                   )
                 : Column(
                     children: [
-                      ProductViewer360(key: viewerAnchor, product: p),
+                      viewer,
                       const SizedBox(height: 30),
                       details,
                     ],
                   ),
           ),
-          const SizedBox(height: 25),
-          Text(
-            'Official Ateneo de Davao campus merchandise.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          if (related.isNotEmpty) ...[
+            const SizedBox(height: 32),
+            const SectionHeading('Related products', 'More from this category'),
+            for (final item in related)
+              ListTile(
+                leading: SizedBox(width: 54, height: 46, child: ProductImage(product: item)),
+                title: Text(item.name),
+                subtitle: Text(money(item.price)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.go('/product/${item.id}'),
+              ),
+          ],
         ],
       ),
     );

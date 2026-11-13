@@ -47,6 +47,37 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+  testWidgets('books can be narrowed by price and opened', (tester) async {
+    final store = Store();
+    await tester.pumpWidget(MagisApp(store: store));
+    await tester.pumpAndSettle();
+    final books = find.widgetWithText(ChoiceChip, 'Books');
+    await tester.ensureVisible(books);
+    await tester.tap(books);
+    await tester.pumpAndSettle();
+    expect(find.text('Dart Programming Workbook'), findsOneWidget);
+    expect(find.text('A5 Grid Notebook'), findsNothing);
+
+    final filter = find.widgetWithText(OutlinedButton, 'Filter by price');
+    await tester.ensureVisible(filter);
+    await tester.tap(filter);
+    await tester.pumpAndSettle();
+    tester.widget<RangeSlider>(find.byType(RangeSlider))
+        .onChanged!(const RangeValues(0, 360));
+    await tester.pump();
+    await tester.tap(find.text('Apply price filter'));
+    await tester.pumpAndSettle();
+    expect(find.text('Data Structures & Algorithms'), findsNothing);
+
+    final book = find.text('Dart Programming Workbook');
+    await tester.ensureVisible(book);
+    await tester.tap(book);
+    await tester.pumpAndSettle();
+    expect(find.text('Back to store'), findsOneWidget);
+    expect(find.text('Related products'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('product add updates bag and cart total live', (tester) async {
     tester.view.physicalSize = const Size(1200, 1000);
     tester.view.devicePixelRatio = 1;

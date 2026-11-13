@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'store.dart';
+import 'study_product_art.dart';
 import 'theme.dart';
 
 void toast(
@@ -320,14 +321,38 @@ class AppFrame extends StatelessWidget {
                 ),
               ),
             ),
-          IconButton(
-            tooltip: 'Toggle light / dark mode',
-            onPressed: store.toggleTheme,
-            icon: Icon(
-              store.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-              size: 21,
+          if (store.onSignOut == null)
+            IconButton(
+              tooltip: 'Toggle light / dark mode',
+              onPressed: store.toggleTheme,
+              icon: Icon(
+                store.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                size: 21,
+              ),
+            )
+          else
+            PopupMenuButton<String>(
+              tooltip: 'Account',
+              icon: const Icon(Icons.account_circle_outlined, size: 21),
+              onSelected: (action) async {
+                if (action == 'theme') {
+                  store.toggleTheme();
+                  return;
+                }
+                try {
+                  await store.onSignOut?.call();
+                } catch (_) {
+                  if (context.mounted) toast(context, 'Could not sign out. Try again.');
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'theme',
+                  child: Text(store.dark ? 'Use light mode' : 'Use dark mode'),
+                ),
+                const PopupMenuItem(value: 'signout', child: Text('Sign out')),
+              ],
             ),
-          ),
           Padding(
             padding: EdgeInsets.only(right: wide ? 36 : 12),
             child: IconButton(
@@ -604,16 +629,18 @@ class ProductImage extends StatelessWidget {
   final double? height;
   const ProductImage({super.key, required this.product, this.height});
   @override
-  Widget build(BuildContext context) => Image.asset(
-    product.image,
-    height: height,
-    fit: BoxFit.contain,
-    semanticLabel: '${product.name}, concept merchandise artwork',
-    errorBuilder: (_, _, _) => SizedBox(
-      height: height ?? 100,
-      child: const Center(child: Icon(Icons.image_not_supported_outlined)),
-    ),
-  );
+  Widget build(BuildContext context) => product.isStudyItem
+      ? SizedBox(height: height, child: StudyProductArt(product: product))
+      : Image.asset(
+          product.image,
+          height: height,
+          fit: BoxFit.contain,
+          semanticLabel: '${product.name}, concept merchandise artwork',
+          errorBuilder: (_, _, _) => SizedBox(
+            height: height ?? 100,
+            child: const Center(child: Icon(Icons.image_not_supported_outlined)),
+          ),
+        );
 }
 
 class SectionHeading extends StatelessWidget {

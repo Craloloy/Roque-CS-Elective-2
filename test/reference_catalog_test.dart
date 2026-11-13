@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_ecommerce_app/store.dart';
 
 void main() {
-  test('seven supplied products replace the invented catalog items', () {
+  test('original campus products stay available alongside study items', () {
     final active = catalog.where((p) => p.active).toList();
-    expect(active.map((p) => p.id).toSet(), {
+    expect(active.where((p) => !p.isStudyItem).map((p) => p.id).toSet(), {
       'pin',
       'sling',
       'uniform',

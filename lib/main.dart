@@ -1,33 +1,97 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'catalog_screen.dart';
 import 'checkout_screen.dart';
 import 'components.dart';
-import 'main_supabase.dart' as carltronics;
+import 'auth/shop_auth_gate.dart';
+import 'product_browser/supabase_config.dart';
 import 'notifications_screen.dart';
 import 'order_screen.dart';
 import 'product_screen.dart';
 import 'store.dart';
 import 'theme.dart';
 
-Future<void> main() => carltronics.main();
-
-Future<void> runMagisStoreApp() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!SupabaseConfig.configured) {
+    runApp(MaterialApp(
+      title: 'MagiStore',
+      theme: Brand.theme(Brightness.light),
+      home: const Scaffold(
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Set your Supabase URL and client key in '
+              'lib/product_browser/supabase_config.dart, then restart MagiStore.',
+            ),
+          ),
+        ),
+      ),
+    ));
+    return;
+  }
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    // ignore: deprecated_member_use
+    anonKey: SupabaseConfig.anonKey,
+  );
+  final client = Supabase.instance.client;
   SharedPreferences? prefs;
   try {
     prefs = await SharedPreferences.getInstance();
   } catch (_) {
-    /* In-memory fallback. */
+    // The storefront can still run with session-only cart data.
   }
-  final store = Store(prefs: prefs);
-  if (prefs == null) {
-    store.persistenceError =
-        'Local storage unavailable. Your saved data lasts for this session.';
+  runApp(ShopAuthGate(
+    client: client,
+    buildApp: (home) => MaterialApp(
+      title: 'MagiStore',
+      debugShowCheckedModeBanner: false,
+      theme: Brand.theme(Brightness.light),
+      home: home,
+    ),
+    buildSignedIn: (user) => _SignedInMagiStore(
+      client: client,
+      userId: user.id,
+      prefs: prefs,
+    ),
+  ));
+}
+
+class _SignedInMagiStore extends StatefulWidget {
+  const _SignedInMagiStore({
+    required this.client,
+    required this.userId,
+    required this.prefs,
+  });
+
+  final SupabaseClient client;
+  final String userId;
+  final SharedPreferences? prefs;
+
+  @override
+  State<_SignedInMagiStore> createState() => _SignedInMagiStoreState();
+}
+
+class _SignedInMagiStoreState extends State<_SignedInMagiStore> {
+  late final Store _store = Store(
+    prefs: widget.prefs,
+    storageKey: 'magisstore.v1.${widget.userId}',
+    onSignOut: () => widget.client.auth.signOut(scope: SignOutScope.local),
+  );
+
+  @override
+  void dispose() {
+    _store.dispose();
+    super.dispose();
   }
-  runApp(MagisApp(store: store));
+
+  @override
+  Widget build(BuildContext context) => MagisApp(store: _store);
 }
 
 class MagisApp extends StatefulWidget {

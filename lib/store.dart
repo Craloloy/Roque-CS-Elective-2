@@ -30,6 +30,7 @@ class Product {
     'polo' => const ['assets/references/pe-collared.png'],
     _ => const <String>[],
   };
+  bool get isStudyItem => category == 'Books' || category == 'Study Supplies';
   int get stock => variants.values.fold(0, (a, b) => a + b);
 }
 
@@ -126,9 +127,91 @@ const catalog = <Product>[
     'Blue fold-over collar · Small chest P.E. crest · White shirt · Navy long pants',
     {'XS': 3, 'S': 6, 'M': 8, 'L': 5, 'XL': 0},
   ),
+  Product(
+    'dart-guide',
+    'Dart Programming Workbook',
+    'Books',
+    349,
+    'book',
+    'Practice variables, lists, classes, and async programming with short exercises and space for notes.',
+    'Paperback · Practice exercises',
+    {'Paperback': 18},
+  ),
+  Product(
+    'algorithms-guide',
+    'Data Structures & Algorithms',
+    'Books',
+    495,
+    'book',
+    'A study companion for arrays, linked lists, trees, sorting, and Big O, with worked examples.',
+    'Paperback · Illustrated examples',
+    {'Paperback': 14},
+  ),
+  Product(
+    'discrete-guide',
+    'Discrete Mathematics Review',
+    'Books',
+    395,
+    'book',
+    'Review logic, sets, relations, counting, and graphs with guided examples and practice questions.',
+    'Paperback · Chapter review questions',
+    {'Paperback': 12},
+  ),
+  Product(
+    'research-guide',
+    'Research Writing Guide',
+    'Books',
+    325,
+    'book',
+    'A reference for planning a paper, reviewing sources, and preparing for a research presentation.',
+    'Paperback · Writing checklists',
+    {'Paperback': 15},
+  ),
+  Product(
+    'grid-notebook',
+    'A5 Grid Notebook',
+    'Study Supplies',
+    95,
+    'notebook',
+    'A grid notebook for diagrams, equations, and everyday lecture notes.',
+    'A5 · 80 sheets · 5 mm grid',
+    {'Navy': 27},
+  ),
+  Product(
+    'index-tabs',
+    'Color Index Tabs',
+    'Study Supplies',
+    55,
+    'tabs',
+    'Mark chapters and important sections without covering the text.',
+    'Five colors · Repositionable tabs',
+    {'Pastel set': 24},
+  ),
+  Product(
+    'pen-set',
+    'Fine Tip Pen Set',
+    'Study Supplies',
+    119,
+    'pens',
+    'Three fine tip pens for annotations, diagrams, and margin notes.',
+    '0.5 mm · Three pens',
+    {'Black ink': 22},
+  ),
+  Product(
+    'study-cards',
+    'Study Flash Cards',
+    'Study Supplies',
+    79,
+    'cards',
+    'Make your own quizzes for formulas, definitions, and key terms.',
+    '100 blank cards · Binder ring',
+    {'Ruled cards': 20},
+  ),
 ];
 const categories = [
   'All items',
+  'Books',
+  'Study Supplies',
   'Pins & Ribbons',
   'PE Uniforms',
   'ID Accessories',
@@ -229,7 +312,14 @@ class Store extends ChangeNotifier {
   final SharedPreferences? prefs;
   // Test fixture / local payment adapter; no gateway requests are made.
   final String paymentOutcome;
-  Store({this.prefs, this.paymentOutcome = 'Success'}) {
+  final String storageKey;
+  final Future<void> Function()? onSignOut;
+  Store({
+    this.prefs,
+    this.paymentOutcome = 'Success',
+    this.storageKey = 'magisstore.v1',
+    this.onSignOut,
+  }) {
     _restore();
   }
   bool dark = false;
@@ -251,7 +341,7 @@ class Store extends ChangeNotifier {
       p.variants.keys.fold(0, (a, v) => a + stock(p, v));
   void _restore() {
     try {
-      final raw = prefs?.getString('magisstore.v1');
+      final raw = prefs?.getString(storageKey);
       if (raw == null) return;
       final j = jsonDecode(raw);
       dark = j['dark'] ?? false;
@@ -271,7 +361,7 @@ class Store extends ChangeNotifier {
     notifyListeners();
     try {
       await prefs?.setString(
-        'magisstore.v1',
+        storageKey,
         jsonEncode({
           'dark': dark,
           'cart': cart.map((l) => l.toJson()).toList(),

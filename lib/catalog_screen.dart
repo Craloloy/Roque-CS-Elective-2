@@ -17,11 +17,77 @@ class CatalogScreen extends StatefulWidget {
 class _CatalogScreenState extends State<CatalogScreen> {
   String category = categories.first, search = '', sort = 'Featured';
   bool savedOnly = false;
+  static const _pageSize = 8;
+  int page = 0;
+  RangeValues? priceRange;
+
+  Future<void> _showPriceFilter() async {
+    final maxPrice = catalog
+        .where((product) => product.active)
+        .map((product) => product.price)
+        .reduce((a, b) => a > b ? a : b)
+        .toDouble();
+    var draft = priceRange ?? RangeValues(0, maxPrice);
+    final result = await showModalBottomSheet<RangeValues>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setDraft) => SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Filter by price', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 12),
+                Text('${money(draft.start)} – ${money(draft.end)}'),
+                RangeSlider(
+                  min: 0,
+                  max: maxPrice,
+                  divisions: maxPrice ~/ 5,
+                  values: draft,
+                  labels: RangeLabels(money(draft.start), money(draft.end)),
+                  onChanged: (value) => setDraft(() => draft = value),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(draft),
+                  child: const Text('Apply price filter'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(RangeValues(0, maxPrice)),
+                  child: const Text('Reset price range'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted || result == null) return;
+    setState(() {
+      priceRange = result == RangeValues(0, maxPrice) ? null : result;
+      page = 0;
+    });
+  }
+
   int banner = 1;
   int benefitIndex = 0;
   late final PageController _benefitPageController;
   Timer? _benefitTimer;
   final searchController = TextEditingController();
+  final _catalogStart = GlobalKey();
+
+  void _goToPage(int index) {
+    setState(() => page = index);
+    final target = _catalogStart.currentContext;
+    if (target != null) {
+      unawaited(Scrollable.ensureVisible(target));
+    }
+  }
 
   @override
   void initState() {
@@ -62,7 +128,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
               '${p.name} ${p.category}'.toLowerCase().contains(
                 search.toLowerCase(),
               ) &&
-              (!savedOnly || widget.store.favorites.contains(p.id)),
+              (!savedOnly || widget.store.favorites.contains(p.id)) &&
+              (priceRange == null ||
+                  (p.price >= priceRange!.start && p.price <= priceRange!.end)),
         )
         .toList();
     if (sort == 'Price: low to high') {
@@ -71,6 +139,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
     if (sort == 'Price: high to low') {
       products.sort((a, b) => b.price.compareTo(a.price));
     }
+    final pageCount = (products.length / _pageSize).ceil();
+    final currentPage = pageCount == 0 ? 0 : page.clamp(0, pageCount - 1).toInt();
+    final visibleProducts = products.skip(currentPage * _pageSize).take(_pageSize).toList();
     return AppFrame(
       store: widget.store,
       child: PageBody(
@@ -188,8 +259,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           const SizedBox(height: 40),
           SectionHeading(
-            'Official Merchandise',
-            'Authentic Ateneo de Davao uniforms, pins, and accessories.',
+            'Campus Shop',
+            'Books, study supplies, uniforms, and campus essentials.',
+            key: _catalogStart,
             trailing: MediaQuery.sizeOf(context).width > 650
                 ? SizedBox(width: 260, child: _search())
                 : null,
@@ -218,7 +290,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         selected: category == c,
                         selectedColor: Brand.blue,
                         showCheckmark: false,
-                        onSelected: (_) => setState(() => category = c),
+                        onSelected: (_) => setState(() {
+                          category = c;
+                          page = 0;
+                        }),
                       ),
                     ),
                   )
@@ -237,7 +312,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 tooltip: savedOnly
                     ? 'Show all products'
                     : 'Show saved products',
-                onPressed: () => setState(() => savedOnly = !savedOnly),
+                onPressed: () => setState(() {
+                  savedOnly = !savedOnly;
+                  page = 0;
+                }),
                 icon: Icon(
                   savedOnly ? Icons.favorite : Icons.favorite_border,
                   size: 18,
@@ -257,10 +335,23 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             (s) => DropdownMenuItem(value: s, child: Text(s)),
                           )
                           .toList(),
-                  onChanged: (v) => setState(() => sort = v!),
+                  onChanged: (v) => setState(() {
+                    sort = v!;
+                    page = 0;
+                  }),
                 ),
               ),
             ],
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _showPriceFilter,
+              icon: const Icon(Icons.tune_rounded, size: 18),
+              label: Text(priceRange == null
+                  ? 'Filter by price'
+                  : '${money(priceRange!.start)} – ${money(priceRange!.end)}'),
+            ),
           ),
           const SizedBox(height: 15),
           if (products.isEmpty)
@@ -274,6 +365,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 search = '';
                 searchController.clear();
                 savedOnly = false;
+                priceRange = null;
+                page = 0;
               }),
             ),
           LayoutBuilder(
@@ -281,7 +374,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               key: const Key('productGrid'),
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: products.length,
+              itemCount: visibleProducts.length,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: box.maxWidth >= 1050
                     ? 4
@@ -292,9 +385,26 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 mainAxisSpacing: 22,
                 mainAxisExtent: box.maxWidth < 500 ? 280 : 340,
               ),
-              itemBuilder: (_, i) => _productCard(context, products[i]),
+              itemBuilder: (_, i) => _productCard(context, visibleProducts[i]),
             ),
           ),
+          if (pageCount > 1)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  tooltip: 'Previous products',
+                  onPressed: currentPage == 0 ? null : () => _goToPage(currentPage - 1),
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Text('Page ${currentPage + 1} of $pageCount'),
+                IconButton(
+                  tooltip: 'Next products',
+                  onPressed: currentPage + 1 >= pageCount ? null : () => _goToPage(currentPage + 1),
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
           const SizedBox(height: 36),
           const SizedBox(height: 44),
           const Divider(),
@@ -503,7 +613,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   Widget _search() => TextField(
     controller: searchController,
-    onChanged: (v) => setState(() => search = v),
+    onChanged: (v) => setState(() {
+      search = v;
+      page = 0;
+    }),
     decoration: const InputDecoration(
       hintText: 'Search merchandise, uniforms, pins…',
       prefixIcon: Icon(Icons.search, size: 20),
@@ -603,8 +716,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                 ? 'Order online. Pick up at the bookstore.'
                                 : 'Order your campus items online and claim directly at the Bookstore express window.')
                           : (mobile
-                                ? 'PE uniforms and essentials, ready for pickup.'
-                                : 'Find your fit for the semester ahead.\nPE uniforms and campus essentials ready for pickup.'),
+                                ? 'Books, study supplies, and campus essentials.'
+                                : 'Find your fit for the semester ahead.\nBooks, study supplies, and campus essentials ready for pickup.'),
                       style: TextStyle(
                         fontSize: mobile ? 15 : 14,
                         height: 1.45,
@@ -619,8 +732,17 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           foregroundColor: Brand.navy,
                           minimumSize: const Size(0, 44),
                         ),
-                        onPressed: () => context.go('/product/uniform'),
-                        label: const Text('Shop campus merchandise'),
+                        onPressed: () {
+                          setState(() {
+                            category = banner == 0 ? 'PE Uniforms' : 'Books';
+                            page = 0;
+                          });
+                          final target = _catalogStart.currentContext;
+                          if (target != null) {
+                            unawaited(Scrollable.ensureVisible(target));
+                          }
+                        },
+                        label: Text(banner == 0 ? 'Shop uniforms' : 'Browse books'),
                         icon: const Icon(Icons.arrow_forward, size: 16),
                         iconAlignment: IconAlignment.end,
                       ),
@@ -701,7 +823,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         child: ProductImage(product: p),
                       ),
                     ),
-                    Positioned(
+                    if (!p.isStudyItem)
+                      Positioned(
                       top: 10,
                       left: 10,
                       child: Tooltip(

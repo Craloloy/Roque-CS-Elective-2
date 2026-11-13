@@ -3,13 +3,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show AutofillHints;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../product_browser/product_shop_page.dart';
-
 const _mobileCallback = 'com.craloloy.apexcomputing://auth-callback/';
-const _brand = 'Apex Computing';
+const _brand = 'MagiStore';
 
 String? get _callbackUrl {
   if (kIsWeb) return '${Uri.base.origin}/';
@@ -28,9 +25,11 @@ class ShopAuthGate extends StatefulWidget {
     super.key,
     required this.client,
     required this.buildApp,
+    required this.buildSignedIn,
   });
   final SupabaseClient client;
   final Widget Function(Widget home) buildApp;
+  final Widget Function(User user) buildSignedIn;
 
   @override
   State<ShopAuthGate> createState() => _ShopAuthGateState();
@@ -79,11 +78,9 @@ class _ShopAuthGateState extends State<ShopAuthGate> {
         ),
       );
     }
-    return ProviderScope(
+    return KeyedSubtree(
       key: ValueKey(user.id),
-      child: widget.buildApp(
-        _SignedInShop(client: widget.client, user: user),
-      ),
+      child: widget.buildSignedIn(user),
     );
   }
 }
@@ -307,88 +304,4 @@ class _SignInPageState extends State<_SignInPage> {
       ),
     );
   }
-}
-
-class _SignedInShop extends StatefulWidget {
-  const _SignedInShop({required this.client, required this.user});
-  final SupabaseClient client;
-  final User user;
-
-  @override
-  State<_SignedInShop> createState() => _SignedInShopState();
-}
-
-class _SignedInShopState extends State<_SignedInShop> {
-  late Future<bool> _canManage = _lookupManager();
-  bool _signingOut = false;
-
-  Future<bool> _lookupManager() async {
-    final row = await widget.client
-        .from('apex_catalog_managers')
-        .select('user_id')
-        .eq('user_id', widget.user.id)
-        .maybeSingle()
-        .timeout(const Duration(seconds: 10));
-    return row != null;
-  }
-
-  Future<void> _signOut() async {
-    if (_signingOut) return;
-    setState(() => _signingOut = true);
-    try {
-      await widget.client.auth.signOut(scope: SignOutScope.local);
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_authMessage(error))));
-      }
-    } finally {
-      if (mounted) setState(() => _signingOut = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<bool>(
-    future: _canManage,
-    builder: (context, snapshot) => ProductShopPage(
-      canManageCatalog:
-          snapshot.connectionState == ConnectionState.done &&
-          snapshot.data == true,
-      accountAction: PopupMenuButton<String>(
-        tooltip: 'Account',
-        padding: EdgeInsets.zero,
-        icon: const Icon(Icons.account_circle_outlined),
-        enabled: !_signingOut,
-        onSelected: (item) {
-          if (item == 'signOut') {
-            unawaited(_signOut());
-          } else if (item == 'refresh') {
-            setState(() => _canManage = _lookupManager());
-          }
-        },
-        itemBuilder: (_) => [
-          PopupMenuItem<String>(
-            enabled: false,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(widget.user.email ?? 'Signed in'),
-                Text(
-                  snapshot.hasError
-                      ? 'Catalog access unavailable'
-                      : snapshot.connectionState != ConnectionState.done
-                      ? 'Checking catalog access'
-                      : snapshot.data == true
-                      ? 'Catalog manager'
-                      : 'Customer',
-                ),
-              ],
-            ),
-          ),
-          const PopupMenuItem(value: 'refresh', child: Text('Refresh catalog access')),
-          const PopupMenuItem(value: 'signOut', child: Text('Sign out')),
-        ],
-      ),
-    ),
-  );
 }
