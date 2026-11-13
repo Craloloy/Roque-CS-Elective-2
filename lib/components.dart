@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'store.dart';
-import 'study_product_art.dart';
 import 'theme.dart';
 
 void toast(
@@ -629,18 +628,18 @@ class ProductImage extends StatelessWidget {
   final double? height;
   const ProductImage({super.key, required this.product, this.height});
   @override
-  Widget build(BuildContext context) => product.isStudyItem
-      ? SizedBox(height: height, child: StudyProductArt(product: product))
-      : Image.asset(
-          product.image,
-          height: height,
-          fit: BoxFit.contain,
-          semanticLabel: '${product.name}, concept merchandise artwork',
-          errorBuilder: (_, _, _) => SizedBox(
-            height: height ?? 100,
-            child: const Center(child: Icon(Icons.image_not_supported_outlined)),
-          ),
-        );
+  Widget build(BuildContext context) => Image.asset(
+    product.image,
+    height: height,
+    fit: BoxFit.contain,
+    semanticLabel: product.isStudyItem
+        ? product.name
+        : '${product.name}, concept merchandise artwork',
+    errorBuilder: (_, _, _) => SizedBox(
+      height: height ?? 100,
+      child: const Center(child: Icon(Icons.image_not_supported_outlined)),
+    ),
+  );
 }
 
 class SectionHeading extends StatelessWidget {

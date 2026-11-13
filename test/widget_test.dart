@@ -55,8 +55,8 @@ void main() {
     await tester.ensureVisible(books);
     await tester.tap(books);
     await tester.pumpAndSettle();
-    expect(find.text('Dart Programming Workbook'), findsOneWidget);
-    expect(find.text('A5 Grid Notebook'), findsNothing);
+    expect(find.text('Dart Apprentice: Fundamentals'), findsOneWidget);
+    expect(find.text('MUJI A5 Grid Notebook'), findsNothing);
 
     final filter = find.widgetWithText(OutlinedButton, 'Filter by price');
     await tester.ensureVisible(filter);
@@ -67,9 +67,9 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Apply price filter'));
     await tester.pumpAndSettle();
-    expect(find.text('Data Structures & Algorithms'), findsNothing);
+    expect(find.text('Introduction to Algorithms'), findsNothing);
 
-    final book = find.text('Dart Programming Workbook');
+    final book = find.text('Dart Apprentice: Fundamentals');
     await tester.ensureVisible(book);
     await tester.tap(book);
     await tester.pumpAndSettle();

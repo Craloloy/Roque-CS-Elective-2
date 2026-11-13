@@ -22,8 +22,11 @@ class Product {
     this.variants, {
     this.active = true,
   });
-  String get image =>
-      active ? 'assets/products/$id-reference.png' : 'assets/products/$id.png';
+  String get image => isStudyItem
+      ? 'assets/products/study-$id.webp'
+      : active
+      ? 'assets/products/$id-reference.png'
+      : 'assets/products/$id.png';
   String get backImage => 'assets/products/$id-back.png';
   List<String> get references => switch (id) {
     'uniform' => const ['assets/references/pe-round.png'],
@@ -129,57 +132,57 @@ const catalog = <Product>[
   ),
   Product(
     'dart-guide',
-    'Dart Programming Workbook',
+    'Dart Apprentice: Fundamentals',
     'Books',
     349,
     'book',
-    'Practice variables, lists, classes, and async programming with short exercises and space for notes.',
-    'Paperback · Practice exercises',
+    'A beginner’s guide to Dart by Jonathan Sande and the Kodeco Tutorial Team.',
+    'First edition · Dart programming',
     {'Paperback': 18},
   ),
   Product(
     'algorithms-guide',
-    'Data Structures & Algorithms',
+    'Introduction to Algorithms',
     'Books',
     495,
     'book',
-    'A study companion for arrays, linked lists, trees, sorting, and Big O, with worked examples.',
-    'Paperback · Illustrated examples',
-    {'Paperback': 14},
+    'The fourth edition by Cormen, Leiserson, Rivest, and Stein covers algorithm design and analysis.',
+    'Fourth edition · MIT Press',
+    {'Hardcover': 14},
   ),
   Product(
     'discrete-guide',
-    'Discrete Mathematics Review',
+    'Discrete Mathematics and Its Applications',
     'Books',
     395,
     'book',
-    'Review logic, sets, relations, counting, and graphs with guided examples and practice questions.',
-    'Paperback · Chapter review questions',
+    'Kenneth H. Rosen’s textbook covers logic, sets, counting, and graph theory.',
+    'Eighth edition · McGraw Hill',
     {'Paperback': 12},
   ),
   Product(
     'research-guide',
-    'Research Writing Guide',
+    'The Craft of Research',
     'Books',
     325,
     'book',
-    'A reference for planning a paper, reviewing sources, and preparing for a research presentation.',
-    'Paperback · Writing checklists',
+    'A guide to developing research questions, working with sources, and making evidence-based arguments.',
+    'Fifth edition · University of Chicago Press',
     {'Paperback': 15},
   ),
   Product(
     'grid-notebook',
-    'A5 Grid Notebook',
+    'MUJI A5 Grid Notebook',
     'Study Supplies',
     95,
     'notebook',
     'A grid notebook for diagrams, equations, and everyday lecture notes.',
-    'A5 · 80 sheets · 5 mm grid',
-    {'Navy': 27},
+    'A5 · Grid paper',
+    {'Gray': 27},
   ),
   Product(
     'index-tabs',
-    'Color Index Tabs',
+    'Post-it Pastel Index Flags',
     'Study Supplies',
     55,
     'tabs',
@@ -189,22 +192,22 @@ const catalog = <Product>[
   ),
   Product(
     'pen-set',
-    'Fine Tip Pen Set',
+    'Staedtler Pigment Liner Set',
     'Study Supplies',
     119,
     'pens',
     'Three fine tip pens for annotations, diagrams, and margin notes.',
-    '0.5 mm · Three pens',
+    'Black pigment ink · Three pens',
     {'Black ink': 22},
   ),
   Product(
     'study-cards',
-    'Study Flash Cards',
+    'Kokuyo Ring-Bound Flash Cards',
     'Study Supplies',
     79,
     'cards',
     'Make your own quizzes for formulas, definitions, and key terms.',
-    '100 blank cards · Binder ring',
+    'Blank study cards · Binder ring',
     {'Ruled cards': 20},
   ),
 ];
@@ -229,6 +232,12 @@ const slots = [
   '13:15–13:30',
 ];
 
+String _currentVariant(String id, String variant) => switch ((id, variant)) {
+  ('algorithms-guide', 'Paperback') => 'Hardcover',
+  ('grid-notebook', 'Navy') => 'Gray',
+  _ => variant,
+};
+
 class CartLine {
   final String productId, variant;
   final bool reservation;
@@ -243,8 +252,11 @@ class CartLine {
     'quantity': quantity,
     'reservation': reservation,
   };
-  factory CartLine.fromJson(Map<String, dynamic> j) =>
-      CartLine(j['product'], j['variant'], j['quantity'], j['reservation']);
+  factory CartLine.fromJson(Map<String, dynamic> j) {
+    final id = j['product'] as String;
+    final variant = _currentVariant(id, j['variant'] as String);
+    return CartLine(id, variant, j['quantity'], j['reservation']);
+  }
   CartLine copy() => CartLine(productId, variant, quantity, reservation);
 }
 
@@ -348,9 +360,19 @@ class Store extends ChangeNotifier {
       cart.addAll((j['cart'] as List).map((e) => CartLine.fromJson(e)));
       orders.addAll((j['orders'] as List).map((e) => Order.fromJson(e)));
       favorites.addAll((j['favorites'] as List).cast<String>());
-      sold.addAll(
-        (j['sold'] as Map).map((k, v) => MapEntry(k.toString(), v as int)),
-      );
+      for (final entry in (j['sold'] as Map).entries) {
+        final key = entry.key.toString();
+        final separator = key.indexOf('|');
+        final String currentKey;
+        if (separator < 0) {
+          currentKey = key;
+        } else {
+          final id = key.substring(0, separator);
+          currentKey = '$id|${_currentVariant(id, key.substring(separator + 1))}';
+        }
+        sold.update(currentKey, (count) => count + (entry.value as int),
+            ifAbsent: () => entry.value as int);
+      }
     } catch (_) {
       persistenceError =
           'Saved data could not be restored. This session starts fresh.';
