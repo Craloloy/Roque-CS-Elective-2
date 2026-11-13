@@ -31,6 +31,15 @@ class FakeRepository implements ProductRepository {
   }
 
   @override
+  Future<List<ShopProduct>> fetchRelated({
+    required String productId,
+    String? category,
+  }) async => products
+      .where((p) => p.id != productId && p.laptopCategory == category)
+      .take(4)
+      .toList();
+
+  @override
   Future<ProductPage> fetchPage({
     required PriceBand prices,
     required int page,
@@ -240,6 +249,32 @@ void main() {
     expect(find.byType(ProductDetailPage), findsOneWidget);
     expect(find.byTooltip('Edit laptop'), findsNothing);
     expect(find.byTooltip('Delete laptop'), findsNothing);
+  });
+
+  testWidgets('related laptops exclude the current product and open details', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [productRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp(
+          home: ProductDetailPage(initialProduct: repository.products.first),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Related products'), findsOneWidget);
+    expect(find.byKey(const ValueKey('related_product_1')), findsNothing);
+    final nextProduct = find.byKey(const ValueKey('related_product_2'));
+    await tester.ensureVisible(nextProduct);
+    await tester.tap(nextProduct);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Item 2')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('phone UI renders cards, edits, deletes, and filters without overflow', (

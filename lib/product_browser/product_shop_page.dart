@@ -709,6 +709,14 @@ class _ProductShopPageState extends ConsumerState<ProductShopPage> {
   }
 }
 
+final _relatedProductsProvider =
+    FutureProvider.autoDispose.family<List<ShopProduct>, ({String id, String? category})>(
+      (ref, product) => ref.watch(productRepositoryProvider).fetchRelated(
+        productId: product.id,
+        category: product.category,
+      ),
+    );
+
 /// Dedicated next-page screen for viewing a laptop and performing Update/Delete.
 class ProductDetailPage extends ConsumerStatefulWidget {
   const ProductDetailPage({
@@ -902,6 +910,13 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
                           ],
                         ),
                       ),
+                    const SizedBox(height: 20),
+                    const Divider(color: _border, height: 1),
+                    const SizedBox(height: 16),
+                    _RelatedProducts(
+                      product: _product,
+                      canManageCatalog: widget.canManageCatalog,
+                    ),
                     if (widget.canManageCatalog) ...[
                       const SizedBox(height: 24),
                       Row(
@@ -938,6 +953,87 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RelatedProducts extends ConsumerWidget {
+  const _RelatedProducts({
+    required this.product,
+    required this.canManageCatalog,
+  });
+
+  final ShopProduct product;
+  final bool canManageCatalog;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final request = _relatedProductsProvider((
+      id: product.id,
+      category: product.laptopCategory,
+    ));
+    final related = ref.watch(request);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Related products',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        related.when(
+          loading: () => const LinearProgressIndicator(),
+          error: (_, _) => TextButton(
+            onPressed: () => ref.invalidate(request),
+            child: const Text('Retry loading related products'),
+          ),
+          data: (items) {
+            if (items.isEmpty) {
+              return const Text('No other laptops to show yet.');
+            }
+            return Column(
+              children: [
+                for (final item in items)
+                  ListTile(
+                    key: ValueKey('related_product_${item.id}'),
+                    contentPadding: EdgeInsets.zero,
+                    leading: SizedBox(
+                      width: 54,
+                      height: 42,
+                      child: _ProductPhoto(product: item),
+                    ),
+                    title: Text(
+                      item.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(money(item.price)),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () async {
+                      final result = await Navigator.of(context).push<String>(
+                        MaterialPageRoute(
+                          builder: (_) => ProductDetailPage(
+                            initialProduct: item,
+                            canManageCatalog: canManageCatalog,
+                          ),
+                        ),
+                      );
+                      if (!context.mounted) return;
+                      ref.invalidate(request);
+                      if (result != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(result)),
+                        );
+                      }
+                    },
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }

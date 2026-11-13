@@ -3,6 +3,10 @@ import 'product_models.dart';
 
 abstract class ProductRepository {
   Future<PriceBand> fetchBounds();
+  Future<List<ShopProduct>> fetchRelated({
+    required String productId,
+    String? category,
+  });
   Future<ProductPage> fetchPage({
     required PriceBand prices,
     required int page,
@@ -100,6 +104,36 @@ class SupabaseProductRepository implements ProductRepository {
       response.data.map(ShopProduct.fromJson).toList(),
       response.count,
     );
+  }
+
+  @override
+  Future<List<ShopProduct>> fetchRelated({
+    required String productId,
+    String? category,
+  }) async {
+    final candidates = client
+        .from(table)
+        .select('id,name,price,image_url')
+        .neq('id', _normalizeId(productId));
+    if (category != null && category.isNotEmpty) {
+      final matches = await candidates
+          .inFilter('image_url', [
+            'carltronics://laptop/$category',
+            'apex://laptop/$category',
+          ])
+          .order('price', ascending: true)
+          .order('id', ascending: true)
+          .limit(4)
+          .timeout(const Duration(seconds: 15));
+      if (matches.isNotEmpty) return matches.map(ShopProduct.fromJson).toList();
+    }
+
+    final alternatives = await candidates
+        .order('price', ascending: true)
+        .order('id', ascending: true)
+        .limit(4)
+        .timeout(const Duration(seconds: 15));
+    return alternatives.map(ShopProduct.fromJson).toList();
   }
 
   @override
