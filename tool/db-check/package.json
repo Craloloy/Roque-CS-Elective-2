@@ -1,0 +1,10 @@
+{
+  "name": "magistore-db-check",
+  "private": true,
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.17"
+  }
+}

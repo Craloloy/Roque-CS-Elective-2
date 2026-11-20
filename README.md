@@ -1,16 +1,7 @@
 # MagiStore
 
-A Flutter campus shop for books, study supplies, uniforms, and accessories. Browse by category, search, filter by price, or save items for later. The demo checkout includes bookstore pickup and a claim QR.
+A Flutter campus shop for books, study supplies, and university merchandise. Customers browse by category or price, build a bag, and keep receipts. Staff manage products, photos, categories, and order status.
 
-## Run
+The storefront uses Riverpod and the six tables in the Supabase `magistore` schema. The checkout function prices each item from the catalog and saves the order and stock changes together.
 
-Set your Supabase project URL and client key in `lib/product_browser/supabase_config.dart`.
-
-```powershell
-flutter pub get
-flutter run -d chrome --web-hostname localhost --web-port 3000
-```
-
-MagiStore uses Supabase for email/password and GitHub sign-in. For GitHub, use the Supabase provider callback as the **Authorization callback URL** in your GitHub OAuth App. Enable the provider in Supabase and add `http://localhost:3000/` to the allowed redirect URLs. The existing native callback remains compatible with the previous setup.
-
-The catalog, bag, favorites, and simulated checkout are part of the local demo. Cart and order data are stored on the device per signed-in account. Product prices and quantities are sample values; no payments are processed.
+[Set up Supabase and run the app](docs/final-setup.md) · [Product photo sources](docs/study-image-sources.md)
